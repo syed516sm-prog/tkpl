@@ -5,8 +5,8 @@ import { useTournament } from '../context/TournamentContext';
 import { BrandMark } from './BrandLogo';
 
 const CONTACTS = [
-  { shop: 'Sultan Sports', phone: '9110744945', logo: '/assets/sultan-sports-logo.png' },
-  { shop: 'NR Sports', phone: '8919155512', logo: '/assets/nr-sports-logo.png' },
+  { shop: 'Sultan Sports', phone: '9110744945', logo: '/assets/sultan-sports-logo.webp' },
+  { shop: 'NR Sports', phone: '8919155512', logo: '/assets/nr-sports-logo.webp' },
 ];
 
 export const Footer: React.FC = () => {

@@ -18,8 +18,8 @@ const SLIDES: OrganizerSlide[] = [
     shop: 'Sultan Sports',
     place: 'Kadapa',
     phone: '9110744945',
-    photo: '/assets/organizer-mansoor.jpeg',
-    logo: '/assets/sultan-sports-logo.png',
+    photo: '/assets/organizer-mansoor.webp',
+    logo: '/assets/sultan-sports-logo.webp',
     accent: 'text-brand-yellow',
   },
   {
@@ -27,8 +27,8 @@ const SLIDES: OrganizerSlide[] = [
     shop: 'NR Sports',
     place: 'Vempalli',
     phone: '8919155512',
-    photo: '/assets/organizer-sunil.jpeg',
-    logo: '/assets/nr-sports-logo.png',
+    photo: '/assets/organizer-sunil.webp',
+    logo: '/assets/nr-sports-logo.webp',
     accent: 'text-brand-lime',
   },
 ];
