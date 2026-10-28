@@ -24,8 +24,8 @@ The core application code, design, database structure, security rules, and autom
 * **Test Engine:** Vitest 3.2.7
 * **Total Tests:** 37 passed across 5 test suites (0 failures).
 * **Coverage Highlights:**
-  1. `api/__tests__/verify-payment.test.ts`: Re-verifies Razorpay payment signatures server-side, guards against amount tampering, and rejects foreign order IDs.
-  2. `api/__tests__/reconcile.test.ts`: Tests background reconciliation for abandoned checkouts and cron secret security.
+  1. `tests/verify-payment.test.ts`: Re-verifies Razorpay payment signatures server-side, guards against amount tampering, and rejects foreign order IDs.
+  2. `tests/reconcile.test.ts`: Tests background reconciliation for abandoned checkouts and cron secret security.
   3. `src/modules/core/test/tkpl.test.tsx`: Validates player age brackets (15–50), Indian phone formatting, private photo upload paths, duplicate entry prevention, and Supabase admin authentication.
   4. `src/modules/core/test/receipt.test.tsx`: Validates receipt payload integrity, 3-factor authentication (Registration Number + Phone + DOB), and QR code generation.
 
@@ -98,7 +98,7 @@ When importing `r73608925-lab/TKPL` into Vercel, navigate to **Project Settings 
 | `SUPABASE_SERVICE_ROLE_KEY` | Server Only (Secret) | *(From `.env.local` line 10)* |
 | `RAZORPAY_KEY_ID` | Server Only | `rzp_test_...` *(or `rzp_live_...`)* |
 | `RAZORPAY_KEY_SECRET` | Server Only (Secret) | *(From Razorpay Dashboard)* |
-| `CRON_SECRET` | Server Only (Secret) | `tkpl_reconcile_cron_secret_2026` |
+| `CRON_SECRET` | Server Only (Secret) | *(Generate a random string of 16+ chars — never commit it)* |
 
 > *Notice:* Never prefix `SUPABASE_SERVICE_ROLE_KEY` or `RAZORPAY_KEY_SECRET` with `VITE_`. Keeping them without the prefix ensures they remain strictly on the Vercel server and are never exposed to players' web browsers.
 

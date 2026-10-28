@@ -44,7 +44,7 @@ To transition from the current setup to a fully functioning payment gateway coll
 #### Why It Is Needed:
 Currently, when a player pays via PhonePe/GPay, their receipt is generated as soon as Razorpay redirects them back to the website. However, if a player's phone battery dies, or if they accidentally close their browser immediately after entering their UPI PIN, the browser never sends the confirmation back. 
 
-While our 10-minute backup cron catches these, Razorpay's official best practice is an instant **Webhook**.
+While our daily backup cron catches these, Razorpay's official best practice is an instant **Webhook**.
 
 * **How It Works:** Razorpay's servers send an instant background notification directly to our server (`payment.captured` and `order.paid`).
 * **Benefit:** The player's registration and receipt are marked **Verified in under 1 second**, even if the player never returns to the browser.
