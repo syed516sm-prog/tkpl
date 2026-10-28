@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   GearSix,
   CheckCircle,
   WarningCircle,
   LockKey,
   DownloadSimple,
+  CreditCard,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import { canRolePerform } from '../../core/lib/validation';
+import { fetchPaymentGatewayHealth, type GatewayHealth } from '../../core/lib/paymentApi';
 
 export const AdminSettingsPage: React.FC = () => {
   const { settings, players, payments, auditLogs, adminSession, updateTournamentSettings } =
@@ -33,8 +35,19 @@ export const AdminSettingsPage: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  const [gateway, setGateway] = useState<GatewayHealth | null>(null);
 
-  const handleSave = (e: React.FormEvent) => {
+  useEffect(() => {
+    let cancelled = false;
+    fetchPaymentGatewayHealth().then((health) => {
+      if (!cancelled) setGateway(health);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
 
@@ -45,7 +58,7 @@ export const AdminSettingsPage: React.FC = () => {
     }
 
     try {
-      updateTournamentSettings({
+      await updateTournamentSettings({
         tournament_name: tournamentName.trim(),
         season: season.trim(),
         organizer_line: organizerLine.trim(),
@@ -117,6 +130,34 @@ export const AdminSettingsPage: React.FC = () => {
             <span>Download Full Ledger JSON Backup</span>
           </button>
         )}
+      </div>
+
+      {/* Read-only payment gateway status. No key or secret is ever shown. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
+        <div className="flex items-center gap-3">
+          <CreditCard size={22} className="text-emerald-400" />
+          <div>
+            <p className="text-sm font-bold text-zinc-100">Payment gateway: Razorpay (online checkout)</p>
+            <p className="text-xs text-zinc-400">
+              Keys live only in the server environment; the browser never sees them.
+            </p>
+          </div>
+        </div>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
+            gateway === null
+              ? 'border-zinc-700 bg-zinc-800/60 text-zinc-400'
+              : gateway.configured
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                : 'border-amber-500/40 bg-amber-500/10 text-amber-300'
+          }`}
+        >
+          {gateway === null
+            ? 'Checking…'
+            : gateway.configured
+              ? 'Connected · online payments live'
+              : 'Not configured · players are told to pay via the organizers'}
+        </span>
       </div>
 
       {!canManage ? (
@@ -246,7 +287,7 @@ export const AdminSettingsPage: React.FC = () => {
 
             <div className="flex flex-col gap-2">
               <label htmlFor="cfg_upi" className="text-sm font-semibold text-zinc-200">
-                Official Payment UPI ID
+                Fallback Payment UPI ID (offline / organizer reference)
               </label>
               <input
                 id="cfg_upi"

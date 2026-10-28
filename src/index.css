@@ -65,3 +65,47 @@
     animation: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Receipt printing: /receipt prints the card only, on A5, with no chrome.
+   --------------------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A5 portrait;
+    margin: 8mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #070708 !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+
+  .receipt-print-area {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    margin: 0;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-card {
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

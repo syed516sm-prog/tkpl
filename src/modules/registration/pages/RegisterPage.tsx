@@ -1,13 +1,16 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Camera,
   CheckCircle,
   WarningCircle,
-  CurrencyInr,
   CalendarBlank,
   UploadSimple,
   ShieldCheck,
+  LockSimple,
+  Copy,
+  Check,
+  SealCheck,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import {
@@ -15,13 +18,10 @@ import {
   validatePhotoFile,
   validateRegistrationForm,
 } from '../../core/lib/validation';
-import type {
-  BattingHand,
-  BowlingStyle,
-  PaymentMethod,
-  PlayingRole,
-  RegistrationFormInput,
-} from '../../core/types/tkpl';
+import type { BattingHand, BowlingStyle, PlayingRole, RegistrationFormInput } from '../../core/types/tkpl';
+import { buildPayPrompt, fetchPaymentGatewayHealth } from '../../core/lib/paymentApi';
+import { runRegistrationPayment } from '../../core/lib/checkout';
+import type { RegistrationSubmitResponse } from '../../core/context/TournamentContext';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -45,8 +45,6 @@ export const RegisterPage: React.FC = () => {
     photo_file_name: '',
     rules_acknowledged: false,
     marketing_consent: false,
-    payment_method: 'upi',
-    transaction_ref: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -54,6 +52,24 @@ export const RegisterPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // The saved registration that is waiting for payment.
+  const [savedRegistration, setSavedRegistration] = useState<RegistrationSubmitResponse | null>(null);
+  const [isPaying, setIsPaying] = useState<boolean>(false);
+  const [payError, setPayError] = useState<string>('');
+  const [copiedRegNo, setCopiedRegNo] = useState<boolean>(false);
+  const [gatewayAvailable, setGatewayAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPaymentGatewayHealth().then((health) => {
+      if (!cancelled) setGatewayAvailable(health.configured);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const feeLabel = formatInrFromPaise(settings.fee_paise);
   const isDeadlinePassed = new Date().getTime() > new Date(settings.deadline).getTime();
   const isRegistrationBlocked = !settings.registration_open || isDeadlinePassed;
 
@@ -104,13 +120,9 @@ export const RegisterPage: React.FC = () => {
 
     try {
       const result = await submitRegistration(form, idempotencyKey);
-      navigate('/registration-success', {
-        state: {
-          registration: result,
-          phone: form.phone,
-          date_of_birth: form.date_of_birth,
-        },
-      });
+      // Stay on this page: the pay step opens next, under the saved form.
+      setSavedRegistration(result);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       const message =
         err instanceof Error
@@ -121,6 +133,156 @@ export const RegisterPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const handlePay = async () => {
+    if (!savedRegistration || isPaying) return;
+    setPayError('');
+    setIsPaying(true);
+    try {
+      const result = await runRegistrationPayment({
+        registration_no: savedRegistration.registration_no,
+        phone: form.phone,
+        date_of_birth: form.date_of_birth,
+        full_name: savedRegistration.full_name,
+      });
+      if (result.type === 'success') {
+        navigate('/receipt', {
+          state: {
+            receipt: result.receipt,
+            phone: form.phone,
+            date_of_birth: form.date_of_birth,
+          },
+        });
+      }
+    } catch (err) {
+      setPayError(
+        err instanceof Error
+          ? err.message
+          : 'We could not confirm this payment. Retry or contact the organizers.'
+      );
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleCopyRegNo = async () => {
+    if (!savedRegistration) return;
+    try {
+      await navigator.clipboard.writeText(savedRegistration.registration_no);
+      setCopiedRegNo(true);
+      setTimeout(() => setCopiedRegNo(false), 2200);
+    } catch {
+      // Clipboard blocked — the number is on screen.
+    }
+  };
+
+  if (savedRegistration) {
+    return (
+      <div className="min-h-[calc(100dvh-4rem)] bg-brand-ink py-10 sm:py-14">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6">
+          <div className="rounded-3xl border border-brand-lime/30 bg-brand-surface/70 p-6 sm:p-10">
+            <div className="flex items-center gap-3 text-brand-lime">
+              <SealCheck size={30} weight="fill" />
+              <div>
+                <p className="text-xs font-semibold tracking-[0.18em] uppercase">
+                  Registration saved
+                </p>
+                <h1 className="font-display text-2xl font-black text-white sm:text-3xl">
+                  One step left, {savedRegistration.full_name}
+                </h1>
+              </div>
+            </div>
+
+            <p className="mt-4 text-sm leading-relaxed text-brand-muted">
+              {buildPayPrompt(savedRegistration.registration_no, feeLabel)} Your receipt number is
+              created the moment Razorpay confirms the payment.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-line bg-brand-ink p-5">
+              <div>
+                <span className="text-[10px] font-semibold tracking-[0.16em] text-brand-muted uppercase">
+                  Registration number
+                </span>
+                <p className="font-mono text-xl font-black text-brand-yellow sm:text-2xl">
+                  {savedRegistration.registration_no}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyRegNo}
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-line px-3.5 py-2 text-xs font-semibold text-zinc-200 transition hover:border-brand-lime/50"
+              >
+                {copiedRegNo ? (
+                  <Check size={14} weight="bold" className="text-brand-lime" />
+                ) : (
+                  <Copy size={14} />
+                )}
+                <span>{copiedRegNo ? 'Copied' : 'Copy number'}</span>
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-brand-line bg-brand-ink/60 p-5">
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-sm text-brand-muted">Registration fee</span>
+                <span className="font-display text-2xl font-black text-white">{feeLabel}</span>
+              </div>
+              <p className="mt-1 text-xs text-brand-muted">
+                Secure online payment · UPI (PhonePe, Google Pay, Paytm) via Razorpay.
+              </p>
+            </div>
+
+            {payError && (
+              <div
+                role="alert"
+                className="mt-5 flex items-start gap-2.5 rounded-xl border border-rose-500/40 bg-rose-950/40 p-4 text-sm text-rose-200"
+              >
+                <WarningCircle size={18} className="mt-0.5 shrink-0 text-rose-400" />
+                <span>{payError}</span>
+              </div>
+            )}
+
+            {gatewayAvailable === false && (
+              <div
+                role="status"
+                className="mt-5 flex items-start gap-2.5 rounded-xl border border-amber-500/35 bg-amber-950/20 p-4 text-xs text-amber-200"
+              >
+                <LockSimple size={16} className="mt-0.5 shrink-0 text-amber-400" />
+                <span>
+                  Online payment is not switched on for this deployment yet. Your registration is
+                  saved — contact {settings.contact_text} with your Registration Number to pay.
+                </span>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={handlePay}
+                disabled={isPaying}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-lime px-6 py-3.5 text-sm font-black tracking-wide text-brand-ink uppercase shadow-[0_16px_40px_-16px_rgba(182,255,46,0.85)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]"
+              >
+                <LockSimple size={17} weight="bold" />
+                <span>
+                  {isPaying ? 'Opening secure checkout…' : `Pay Securely with Razorpay · ${feeLabel}`}
+                </span>
+              </button>
+              <span className="inline-flex items-center gap-1.5 text-xs text-brand-muted">
+                <ShieldCheck size={15} className="text-brand-lime" />
+                <span>Payment verified by signature · receipt issued instantly</span>
+              </span>
+            </div>
+
+            <p className="mt-5 text-xs leading-relaxed text-brand-muted">
+              Closed the checkout by mistake? Your registration is safe — press Pay again, or use
+              <strong className="text-zinc-200"> Check Status </strong>
+              with your Registration Number, Mobile Number and Date of Birth to complete the payment
+              later.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-zinc-950 py-10 sm:py-14">
@@ -163,12 +325,18 @@ export const RegisterPage: React.FC = () => {
               </span>
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <CurrencyInr size={15} className="text-emerald-400" />
+              <LockSimple size={15} className="text-emerald-400" />
               <span>
-                Official UPI ID: <strong className="font-mono text-zinc-100">{settings.upi_id}</strong>
+                Pay online securely · <strong className="text-zinc-100">UPI (PhonePe, GPay, Paytm)</strong>
               </span>
             </span>
           </div>
+          <p className="mt-3 text-xs text-zinc-500">
+            By registering you agree to our{' '}
+            <Link to="/policies/terms" className="underline hover:text-brand-lime">Terms</Link>,{' '}
+            <Link to="/policies/refund" className="underline hover:text-brand-lime">Refund Policy</Link> and{' '}
+            <Link to="/policies/privacy" className="underline hover:text-brand-lime">Privacy Policy</Link>.
+          </p>
         </div>
 
         {/* Closed / Deadline Alert */}
@@ -413,7 +581,7 @@ export const RegisterPage: React.FC = () => {
                 value={form.experience}
                 onChange={(e) => setForm({ ...form, experience: e.target.value })}
                 className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                placeholder="Mention previous clubs, district leagues or notable achievements"
+                placeholder="Mention previous clubs, tournaments or notable achievements"
               />
             </div>
 
@@ -464,54 +632,46 @@ export const RegisterPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Section 3: Fee Payment Reference (Optional at form time, can also be added later) */}
+          {/* Section 3: Online Fee Payment */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-zinc-100 border-b border-zinc-800 pb-2">
-              3. Registration Fee Payment Reference
+              3. Registration Fee Payment
             </h2>
 
-            <div className="rounded-xl border border-amber-500/25 bg-amber-950/15 p-4 text-xs text-zinc-300 space-y-1.5">
-              <p className="font-semibold text-amber-300">
-                Official Fee: {formatInrFromPaise(settings.fee_paise)} · Official UPI ID: {settings.upi_id}
+            <div className="rounded-xl border border-brand-lime/30 bg-brand-lime/[0.06] p-4 text-xs text-zinc-300 space-y-1.5">
+              <p className="font-semibold text-brand-lime">
+                Official Fee: {feeLabel} · Paid online, securely
               </p>
               <p>
-                If you have already paid the registration fee via UPI or at the organizer counter, enter your 12-digit UPI UTR or cash receipt number below. You can also leave it blank now and submit it later on the Check Status page.
+                No UTR or screenshot needed. Save your details below and pay the {feeLabel} fee with
+                Razorpay (UPI: PhonePe, Google Pay, Paytm). Your receipt number is issued the moment
+                the payment is verified.
               </p>
+              {gatewayAvailable === false && (
+                <p className="flex items-start gap-1.5 font-medium text-amber-300">
+                  <WarningCircle size={14} className="mt-0.5 shrink-0" />
+                  <span>
+                    Online payment is not switched on yet. You can still save your details and pay
+                    later through Check Status.
+                  </span>
+                </p>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="payment_method" className="text-sm font-semibold text-zinc-200">
-                  Payment Method
-                </label>
-                <select
-                  id="payment_method"
-                  name="payment_method"
-                  value={form.payment_method}
-                  onChange={(e) => setForm({ ...form, payment_method: e.target.value as PaymentMethod })}
-                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-3 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                >
-                  <option value="upi">UPI Transfer (GPay / PhonePe / Paytm)</option>
-                  <option value="bank_transfer">IMPS / NEFT Bank Transfer</option>
-                  <option value="cash_organizer">Cash Paid at Organizer Counter</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="transaction_ref" className="text-sm font-semibold text-zinc-200">
-                  UPI UTR / Cash Receipt Reference <span className="text-xs font-normal text-zinc-400">(If already paid)</span>
-                </label>
-                <input
-                  id="transaction_ref"
-                  name="transaction_ref"
-                  type="text"
-                  value={form.transaction_ref}
-                  onChange={(e) => setForm({ ...form, transaction_ref: e.target.value })}
-                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-mono text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
-                  placeholder="e.g. 430188472910 or CASH-RCPT-12"
-                />
-              </div>
-            </div>
+            <ol className="grid grid-cols-1 gap-2 text-xs text-zinc-400 sm:grid-cols-3">
+              <li className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+                <span className="font-bold text-emerald-400">1. Save details</span>
+                <p className="mt-0.5">Your profile and photo are stored privately.</p>
+              </li>
+              <li className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+                <span className="font-bold text-emerald-400">2. Pay {feeLabel}</span>
+                <p className="mt-0.5">Secure Razorpay checkout on the next screen.</p>
+              </li>
+              <li className="rounded-xl border border-zinc-800 bg-zinc-950/80 p-3">
+                <span className="font-bold text-emerald-400">3. Get receipt</span>
+                <p className="mt-0.5">Download or print your official receipt instantly.</p>
+              </li>
+            </ol>
           </div>
 
           {/* Section 4: Rules & Privacy Consent */}
@@ -524,7 +684,7 @@ export const RegisterPage: React.FC = () => {
                 className="mt-1 h-4 w-4 rounded border-zinc-600 bg-zinc-950 text-emerald-500 focus:ring-emerald-500"
               />
               <span className="text-xs sm:text-sm text-zinc-300 leading-relaxed">
-                I have read and accept the official TKPL tournament rules, eligibility requirements and refund policy. I understand that my profile and payment reference are subject to organizer verification before auction eligibility. <span className="text-rose-400">*</span>
+                I have read and accept the official TKPL tournament rules, eligibility requirements and refund policy. I understand that the {feeLabel} fee confirms my slot for the official on-ground selection trials, and that only qualified players advance to the final auction pool. <span className="text-rose-400">*</span>
               </span>
             </label>
             {errors.rules_acknowledged && (
@@ -559,7 +719,11 @@ export const RegisterPage: React.FC = () => {
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-7 py-3.5 text-sm sm:text-base font-bold text-zinc-950 shadow-lg transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
             >
               <CheckCircle size={20} weight="bold" />
-              <span>{isSubmitting ? 'Submitting Registration...' : 'Submit Registration'}</span>
+              <span>
+                {isSubmitting
+                  ? 'Saving Details...'
+                  : `Save Details & Pay ${feeLabel}`}
+              </span>
             </button>
           </div>
         </form>

@@ -25,17 +25,15 @@ export const AdminOverviewPage: React.FC = () => {
   const verifiedPayments = payments.filter((py) => py.status === 'verified');
   const submittedUnverifiedPayments = payments.filter((py) => py.status === 'submitted').length;
   const totalVerifiedPaise = verifiedPayments.reduce((acc, item) => acc + item.amount_paise, 0);
+  const razorpayPaise = verifiedPayments
+    .filter((py) => py.method === 'razorpay')
+    .reduce((acc, item) => acc + item.amount_paise, 0);
 
-  const auctionEligibleCount = players.filter((p) => {
-    const pay = payments.find((py) => py.player_id === p.id);
-    return (
-      p.registration_status === 'approved' &&
-      p.auction_status === 'eligible' &&
-      pay?.status === 'verified'
-    );
-  }).length;
-
-  const canViewAudit = canRolePerform(adminSession?.role, 'view_audit');
+  // Pending rows older than 30 minutes: the checkout was opened and abandoned.
+  const abandonedCutoff = Date.now() - 30 * 60 * 1000;
+  const abandonedCheckouts = payments.filter(
+    (py) => py.status === 'pending' && new Date(py.created_at).getTime() < abandonedCutoff
+  ).length;
 
   return (
     <div className="space-y-8">
@@ -45,7 +43,7 @@ export const AdminOverviewPage: React.FC = () => {
             Tournament Operations Overview
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Live player registration counts, payment reconciliation totals and security audit trail.
+            Live player registration counts, Razorpay collections, abandoned checkouts and the security audit trail.
           </p>
         </div>
 
@@ -61,7 +59,7 @@ export const AdminOverviewPage: React.FC = () => {
             to="/admin/payments"
             className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-emerald-400"
           >
-            <span>Reconcile Payments ({submittedUnverifiedPayments} submitted)</span>
+            <span>Payment Ledger ({submittedUnverifiedPayments} legacy to check)</span>
             <ArrowRight size={15} />
           </Link>
         </div>
@@ -89,33 +87,33 @@ export const AdminOverviewPage: React.FC = () => {
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-5">
           <div className="flex items-center justify-between text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Verified Fees</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Collected via Razorpay</span>
             <CurrencyInr size={20} className="text-emerald-400" />
           </div>
           <p className="mt-3 text-3xl font-extrabold text-zinc-50">
-            {formatInrFromPaise(totalVerifiedPaise)}
+            {formatInrFromPaise(razorpayPaise)}
           </p>
-          <p className="mt-1 text-xs text-zinc-400">{verifiedPayments.length} payments matched to bank</p>
+          <p className="mt-1 text-xs text-zinc-400">
+            {verifiedPayments.length} verified ({formatInrFromPaise(totalVerifiedPaise)} incl. legacy)
+          </p>
         </div>
 
         <div className="rounded-2xl border border-amber-500/30 bg-zinc-900/70 p-5">
           <div className="flex items-center justify-between text-amber-300">
-            <span className="text-xs font-semibold uppercase tracking-wider">Unverified Refs</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Abandoned Checkouts</span>
             <ClockCountdown size={20} className="text-amber-400" />
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-amber-300">
-            {submittedUnverifiedPayments}
-          </p>
-          <p className="mt-1 text-xs text-zinc-400">UTR submitted; needs statement check</p>
+          <p className="mt-3 text-3xl font-extrabold text-amber-300">{abandonedCheckouts}</p>
+          <p className="mt-1 text-xs text-zinc-400">Pending &gt; 30 min · player can still pay</p>
         </div>
 
         <div className="rounded-2xl border border-emerald-500/35 bg-emerald-950/20 p-5">
           <div className="flex items-center justify-between text-emerald-300">
-            <span className="text-xs font-semibold uppercase tracking-wider">Auction Eligible</span>
+            <span className="text-xs font-semibold uppercase tracking-wider">Confirmed Entries</span>
             <Trophy size={20} className="text-amber-300" />
           </div>
-          <p className="mt-3 text-3xl font-extrabold text-emerald-300">{auctionEligibleCount}</p>
-          <p className="mt-1 text-xs text-zinc-300">Ready for auction pool export</p>
+          <p className="mt-3 text-3xl font-extrabold text-emerald-300">{verifiedPayments.length}</p>
+          <p className="mt-1 text-xs text-zinc-300">Paid & confirmed players</p>
         </div>
       </div>
 
@@ -135,54 +133,42 @@ export const AdminOverviewPage: React.FC = () => {
           </div>
         </div>
 
-        {!canViewAudit ? (
-          <div className="mt-6 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950 p-5 text-sm text-zinc-400">
-            <LockKey size={20} className="text-amber-400 shrink-0" />
-            <span>
-              Read-Only Helpers cannot view detailed security audit logs. Switch to Super Admin, Registration Reviewer or Payment Verifier to inspect audit history.
-            </span>
-          </div>
-        ) : (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-400">
-                  <th className="py-3 pr-4">Timestamp (IST)</th>
-                  <th className="py-3 px-4">Actor & Role</th>
-                  <th className="py-3 px-4">Action</th>
-                  <th className="py-3 px-4">Record ID</th>
-                  <th className="py-3 pl-4">Summary</th>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800 text-xs uppercase tracking-wider text-zinc-400">
+                <th className="py-3 pr-4">Timestamp (IST)</th>
+                <th className="py-3 px-4">Actor</th>
+                <th className="py-3 px-4">Action</th>
+                <th className="py-3 px-4">Record ID</th>
+                <th className="py-3 pl-4">Summary</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/70">
+              {auditLogs.slice(0, 15).map((entry) => (
+                <tr key={entry.id} className="hover:bg-zinc-800/30">
+                  <td className="py-3 pr-4 font-mono text-xs text-zinc-400 whitespace-nowrap">
+                    {new Date(entry.created_at).toLocaleString('en-IN', {
+                      dateStyle: 'short',
+                      timeStyle: 'short',
+                      timeZone: 'Asia/Kolkata',
+                    })}
+                  </td>
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <span className="font-semibold text-zinc-200">{entry.actor_name}</span>
+                  </td>
+                  <td className="py-3 px-4 font-mono text-xs font-semibold text-emerald-400 whitespace-nowrap">
+                    {entry.action}
+                  </td>
+                  <td className="py-3 px-4 font-mono text-xs text-amber-300 whitespace-nowrap">
+                    {entry.entity_id}
+                  </td>
+                  <td className="py-3 pl-4 text-zinc-300">{entry.summary}</td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/70">
-                {auditLogs.slice(0, 15).map((entry) => (
-                  <tr key={entry.id} className="hover:bg-zinc-800/30">
-                    <td className="py-3 pr-4 font-mono text-xs text-zinc-400 whitespace-nowrap">
-                      {new Date(entry.created_at).toLocaleString('en-IN', {
-                        dateStyle: 'short',
-                        timeStyle: 'short',
-                        timeZone: 'Asia/Kolkata',
-                      })}
-                    </td>
-                    <td className="py-3 px-4 whitespace-nowrap">
-                      <span className="font-semibold text-zinc-200">{entry.actor_name}</span>
-                      <span className="ml-2 rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] uppercase text-zinc-400">
-                        {entry.actor_role}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-xs font-semibold text-emerald-400 whitespace-nowrap">
-                      {entry.action}
-                    </td>
-                    <td className="py-3 px-4 font-mono text-xs text-amber-300 whitespace-nowrap">
-                      {entry.entity_id}
-                    </td>
-                    <td className="py-3 pl-4 text-zinc-300">{entry.summary}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

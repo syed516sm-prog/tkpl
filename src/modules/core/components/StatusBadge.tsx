@@ -1,10 +1,23 @@
 import React from 'react';
 import type {
   AuctionStatus,
+  PaymentMethod,
   PaymentStatus,
   PlayingRole,
   RegistrationStatus,
 } from '../types/tkpl';
+
+const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  razorpay: 'Razorpay (Online)',
+  upi: 'UPI Transfer',
+  bank_transfer: 'Bank Transfer',
+  cash_organizer: 'Cash to Organizer',
+};
+
+export function paymentMethodLabel(method: PaymentMethod | string | null | undefined): string {
+  if (!method) return 'Unknown';
+  return PAYMENT_METHOD_LABELS[method as PaymentMethod] ?? method.replace(/_/g, ' ');
+}
 
 const REGISTRATION_STYLES: Record<RegistrationStatus, { label: string; classes: string }> = {
   submitted: {
@@ -39,7 +52,7 @@ const PAYMENT_STYLES: Record<PaymentStatus, { label: string; classes: string }> 
     classes: 'border-zinc-700 bg-zinc-800/80 text-zinc-300',
   },
   submitted: {
-    label: 'Ref Submitted (Unverified)',
+    label: 'Ref Submitted (Legacy)',
     classes: 'border-amber-500/35 bg-amber-500/15 text-amber-300',
   },
   verified: {

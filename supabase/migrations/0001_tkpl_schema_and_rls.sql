@@ -1,5 +1,5 @@
 -- ============================================================================
--- T-KPL (Tennis Ball Kadapa District Premier League)
+-- T-KPL (Tennis Ball Kadapa Premier League)
 -- Complete database setup for a FRESH Supabase project.
 -- Paste this whole file into Supabase -> SQL Editor -> New query -> Run.
 -- Safe to run once. (Re-running mostly works too, because of "if not exists".)
@@ -26,7 +26,7 @@ create table if not exists public.admin_users (
 -- One single row (id = 1) holding fee, deadline, rules, etc.
 create table if not exists public.tournament_settings (
   id integer primary key default 1 check (id = 1),
-  tournament_name text not null default 'T-KPL · Tennis Ball Kadapa District Premier League',
+  tournament_name text not null default 'T-KPL · Tennis Ball Kadapa Premier League',
   organizer_line text not null default 'SULTAN SPORTS (KADAPA) · 9110744945',
   partner_line text not null default 'NR SPORTS (VEMPALLI) · 8919155512',
   season text not null default 'Grand Launch · Guru Laser Ball League',
@@ -37,9 +37,9 @@ create table if not exists public.tournament_settings (
   deadline timestamptz not null default '2026-11-30T18:29:59Z',
   min_age integer not null default 15,
   max_age integer not null default 50,
-  rules_text text not null default 'New Kadapa district and Old Kadapa district players only. Players are picked by the official auction (15 players per team; base price Rs 1,000 for best batsman/bowler, Rs 2,000 for all-rounder). Every selected player gets 1 dress set + 1 extra T-shirt. All matches are streamed live on YouTube.',
+  rules_text text not null default 'New Kadapa and Old Kadapa players only. Players are picked by the official auction (15 players per team; base price Rs 1,000 for best batsman/bowler, Rs 2,000 for all-rounder). Every selected player gets 1 dress set + 1 extra T-shirt. All matches are streamed live on YouTube.',
   refund_policy text not null default 'Payments are verified against official bank/UPI statements. A screenshot alone is never treated as proof of payment.',
-  privacy_notice text not null default 'Player photos, date of birth, locality and phone numbers are stored privately for district eligibility checks and the official T-KPL player auction.',
+  privacy_notice text not null default 'Player photos, date of birth, locality and phone numbers are stored privately for Kadapa eligibility checks and the official T-KPL player auction.',
   contact_text text not null default 'Sultan Sports Kadapa: 9110744945 | NR Sports Vempalli: 8919155512',
   updated_by uuid references auth.users(id),
   updated_at timestamptz not null default now()
@@ -465,6 +465,9 @@ create policy "Admins can update franchise enquiries"
 -- ----------------------------------------------------------------------------
 
 -- 5a. Register a player (also enforces open/closed, deadline, age, duplicates)
+--     Fees are paid online via Razorpay (see 0002). The last two parameters are
+--     kept only so older callers still compile; their values are ignored and
+--     every new payment starts as method='razorpay', status='pending'.
 create or replace function public.submit_player_registration(
   p_full_name text,
   p_phone text,
@@ -492,8 +495,8 @@ declare
   v_phone text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g');
   v_age integer;
   v_pay_status text;
-  v_ref text := trim(coalesce(p_transaction_ref, ''));
 begin
+  -- p_payment_method / p_transaction_ref are intentionally unused (online payment only).
   if length(v_phone) = 12 and left(v_phone, 2) = '91' then
     v_phone := right(v_phone, 10);
   end if;
@@ -543,10 +546,10 @@ begin
     raise exception 'DUPLICATE_PHONE: A registration already exists with this mobile number. Use Check Status.';
   end;
 
-  v_pay_status := case when v_ref <> '' then 'submitted' else 'pending' end;
+  v_pay_status := 'pending';
 
   insert into public.payments (player_id, amount_paise, currency, method, transaction_ref, status)
-  values (v_player.id, v_settings.fee_paise, v_settings.currency, coalesce(p_payment_method, 'upi'), v_ref, v_pay_status);
+  values (v_player.id, v_settings.fee_paise, v_settings.currency, 'razorpay', '', v_pay_status);
 
   return jsonb_build_object(
     'player_id', v_player.id,

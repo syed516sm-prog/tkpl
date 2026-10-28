@@ -12,15 +12,7 @@ export const HomePage: React.FC = () => {
   const preferReducedMotion = useReducedMotion();
 
   const feeFormatted = formatInrFromPaise(settings.fee_paise);
-
-  const auctionEligibleCount = players.filter((p) => {
-    const pay = payments.find((py) => py.player_id === p.id);
-    return (
-      p.registration_status === 'approved' &&
-      p.auction_status === 'eligible' &&
-      pay?.status === 'verified'
-    );
-  }).length;
+  const registeredCount = players.length;
 
   const deadlinePassed = Boolean(settings.deadline) && new Date(settings.deadline).getTime() < Date.now();
   const registrationOpen = settings.registration_open && !deadlinePassed;
@@ -46,7 +38,7 @@ export const HomePage: React.FC = () => {
 
       <KeyNumbers
         feeFormatted={feeFormatted}
-        auctionEligibleCount={auctionEligibleCount}
+        registeredCount={registeredCount}
       />
 
       <PrizePool />
@@ -112,13 +104,13 @@ const Hero: React.FC<HeroProps> = ({
 
           <h1 className="mt-5 font-display text-4xl leading-[1.05] font-black tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
             Tennis Ball
-            <span className="mt-1 block brand-text-gradient">Kadapa District</span>
+            <span className="mt-1 block brand-text-gradient">Kadapa</span>
             <span className="mt-1 block text-white">Premier League</span>
           </h1>
 
           <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-brand-muted sm:text-base lg:mx-0">
-            New &amp; Old Kadapa district players only. Register your player profile, pay the
-            entry fee and enter the verified T-KPL auction pool.
+            New &amp; Old Kadapa players only. Register your player profile, pay the
+            entry fee online and get your official receipt instantly.
           </p>
 
           <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center lg:justify-start">
@@ -145,11 +137,11 @@ const Hero: React.FC<HeroProps> = ({
             )}
 
             <Link
-              to="/check-status"
+              to="/find-ticket"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-brand-line bg-white/[0.03] px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-brand-lime/50 hover:bg-white/[0.06]"
             >
               <MagnifyingGlass size={17} weight="bold" />
-              <span>Check Status</span>
+              <span>Find My Ticket</span>
             </Link>
           </div>
 
@@ -205,30 +197,28 @@ const Hero: React.FC<HeroProps> = ({
 
 interface KeyNumbersProps {
   feeFormatted: string;
-  auctionEligibleCount: number;
+  registeredCount: number;
 }
 
-const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, auctionEligibleCount }) => {
+const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, registeredCount }) => {
   const items = [
-    { label: 'Player Entry', value: `${feeFormatted}/-`, sub: 'One-time registration fee' },
-    { label: '1st Prize', value: '₹2,00,000', sub: 'Champions + trophy' },
-    { label: '2nd Prize', value: '₹1,50,000', sub: 'Runners-up + trophy' },
+    { label: 'Player Entry Fee', value: `${feeFormatted}/-`, sub: 'Official tournament registration' },
     {
-      label: 'Auction Pool',
-      value: String(auctionEligibleCount),
-      sub: 'Verified eligible players',
+      label: 'Registered Players',
+      value: String(registeredCount),
+      sub: 'Confirmed tournament entries',
     },
   ];
 
   return (
     <section className="border-b border-brand-line/70 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-brand-line bg-brand-line lg:grid-cols-4">
+      <div className="mx-auto grid max-w-3xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-brand-line bg-brand-line">
         {items.map((item) => (
           <div key={item.label} className="bg-brand-surface px-4 py-5 sm:px-6 sm:py-6">
             <p className="text-[10px] font-semibold tracking-[0.2em] text-brand-muted uppercase">
               {item.label}
             </p>
-            <p className="mt-2 font-display text-xl font-black tracking-tight text-white sm:text-2xl">
+            <p className="mt-2 font-display text-xl font-black tracking-tight text-white tabular-nums sm:text-2xl">
               {item.value}
             </p>
             <p className="mt-1 text-[11px] text-zinc-500">{item.sub}</p>
@@ -277,12 +267,10 @@ const PrizePool: React.FC = () => (
         </div>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-brand-line bg-brand-surface px-5 py-4">
-        <p className="text-xs leading-relaxed text-zinc-400">
+      <p className="mt-4 text-xs leading-relaxed text-zinc-400">
           <span className="font-semibold text-white">Man of the Series ₹5,000/-</span> and
           a Man of the Match award in every single game.
         </p>
-      </div>
     </div>
   </section>
 );
@@ -297,11 +285,11 @@ const ClosingCta: React.FC<ClosingCtaProps> = ({ feeFormatted, registrationOpen 
     <div className="mx-auto max-w-6xl">
       <div className="rounded-3xl border border-brand-line bg-brand-surface/60 px-6 py-10 text-center sm:px-10">
         <h2 className="mx-auto max-w-xl font-display text-2xl leading-tight font-black tracking-tight text-white sm:text-3xl">
-          Ready to register for <span className="brand-text-gradient">{feeFormatted}/-</span>?
+          Ready to <span className="brand-text-gradient">join the league</span>?
         </h2>
         <p className="mx-auto mt-3 max-w-lg text-sm text-brand-muted">
-          Complete your player profile, submit the payment reference and track approval and
-          auction eligibility any time.
+          Complete your player profile, pay online securely, and download your official receipt
+          and entry pass anytime.
         </p>
         <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
           {registrationOpen ? (
@@ -317,13 +305,6 @@ const ClosingCta: React.FC<ClosingCtaProps> = ({ feeFormatted, registrationOpen 
               Registrations closed
             </span>
           )}
-          <Link
-            to="/check-status"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-brand-line px-6 py-3.5 text-sm font-semibold text-zinc-100 transition hover:border-brand-lime/50 hover:bg-white/[0.05] sm:w-auto"
-          >
-            <MagnifyingGlass size={17} weight="bold" />
-            <span>Check Status</span>
-          </Link>
         </div>
       </div>
     </div>

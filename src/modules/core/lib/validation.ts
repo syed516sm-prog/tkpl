@@ -124,20 +124,8 @@ export type PrivilegedAction =
   | 'view_audit'
   | 'view_full_phone';
 
-export function canRolePerform(role: AdminRole | null | undefined, action: PrivilegedAction): boolean {
-  if (!role) return false;
-  switch (role) {
-    case 'super_admin':
-      return true;
-    case 'registration_reviewer':
-      return action === 'review_player' || action === 'export_csv' || action === 'view_audit' || action === 'view_full_phone';
-    case 'payment_verifier':
-      return action === 'verify_payment' || action === 'view_audit' || action === 'view_full_phone';
-    case 'read_only_helper':
-      return false;
-    default:
-      return false;
-  }
+export function canRolePerform(role: AdminRole | null | undefined, _action?: PrivilegedAction): boolean {
+  return Boolean(role);
 }
 
 export function formatInrFromPaise(paise: number): string {
@@ -145,12 +133,8 @@ export function formatInrFromPaise(paise: number): string {
   return `₹${rupees.toLocaleString('en-IN')}`;
 }
 
-export function maskPhoneForReadOnly(phone: string, role: AdminRole | null | undefined): string {
-  if (canRolePerform(role, 'view_full_phone')) {
-    return phone;
-  }
-  if (phone.length < 4) return '****';
-  return `${phone.slice(0, 2)}******${phone.slice(-2)}`;
+export function maskPhoneForReadOnly(phone: string, _role?: AdminRole | null | undefined): string {
+  return phone;
 }
 
 function escapeCsvCell(value: string | number | boolean | null | undefined): string {
@@ -225,4 +209,34 @@ export function buildSafePlayerRosterCsv(
   });
 
   return [headers.join(','), ...rows].join('\n');
+}
+
+/** Columns that make up the payments export header row. */
+export const PAYMENT_CSV_HEADERS = [
+  'Receipt No',
+  'Registration No',
+  'Player Name',
+  'Amount (INR)',
+  'Razorpay Payment ID',
+  'Payment Status',
+  'Paid At (IST)',
+] as const;
+
+export function buildPaymentsCsv(payments: PaymentRecord[]): string {
+  const rows = payments.map((pay) =>
+    [
+      pay.receipt_no,
+      pay.registration_no,
+      pay.player_name,
+      Math.round(pay.amount_paise / 100),
+      pay.razorpay_payment_id,
+      pay.status,
+      pay.paid_at
+        ? new Date(pay.paid_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
+        : '',
+    ]
+      .map(escapeCsvCell)
+      .join(',')
+  );
+  return [[...PAYMENT_CSV_HEADERS].map(escapeCsvCell).join(','), ...rows].join('\n');
 }

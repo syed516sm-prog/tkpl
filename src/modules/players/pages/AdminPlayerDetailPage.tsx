@@ -10,9 +10,8 @@ import {
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import { canRolePerform, maskPhoneForReadOnly } from '../../core/lib/validation';
-import type { AuctionStatus, RegistrationStatus } from '../../core/types/tkpl';
+import type { RegistrationStatus } from '../../core/types/tkpl';
 import {
-  AuctionBadge,
   PaymentBadge,
   RegistrationBadge,
   RoleLabel,
@@ -27,9 +26,6 @@ export const AdminPlayerDetailPage: React.FC = () => {
 
   const [regStatus, setRegStatus] = useState<RegistrationStatus>(
     player?.registration_status ?? 'submitted'
-  );
-  const [auctionStatus, setAuctionStatus] = useState<AuctionStatus>(
-    player?.auction_status ?? 'not_reviewed'
   );
   const [reviewNotes, setReviewNotes] = useState<string>(player?.review_notes ?? '');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
@@ -50,7 +46,7 @@ export const AdminPlayerDetailPage: React.FC = () => {
       updatePlayerReview({
         playerId: player.id,
         registrationStatus: regStatus,
-        auctionStatus,
+        auctionStatus: regStatus === 'approved' ? 'eligible' : 'not_reviewed',
         reviewNotes,
       });
       setFeedback({
@@ -182,21 +178,20 @@ export const AdminPlayerDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Right 7 cols: Organizer Review & Auction Eligibility Decision */}
+        {/* Right 7 cols: Organizer Review Decision */}
         <div className="lg:col-span-7">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 sm:p-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4">
               <div>
                 <h2 className="text-xl font-bold text-zinc-50">
-                  Profile Decision & Auction Pool Assignment
+                  Profile Review & Decision
                 </h2>
                 <p className="mt-1 text-xs sm:text-sm text-zinc-400">
-                  Review the player photograph and details before approving or marking Auction Eligible.
+                  Review the player photograph and details before approving or requesting corrections.
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <RegistrationBadge status={player.registration_status} />
-                <AuctionBadge status={player.auction_status} />
               </div>
             </div>
 
@@ -204,10 +199,9 @@ export const AdminPlayerDetailPage: React.FC = () => {
               <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-5 text-sm text-amber-200">
                 <LockKey size={22} className="mt-0.5 shrink-0 text-amber-400" />
                 <div>
-                  <p className="font-bold">Read-Only for Current Role ({adminSession?.role})</p>
+                  <p className="font-bold">Admin Authorization Required</p>
                   <p className="mt-1 text-xs text-zinc-300">
-                    Only <strong className="text-zinc-100">Super Admins</strong> and{' '}
-                    <strong className="text-zinc-100">Registration Reviewers</strong> can change a player&apos;s approval or auction eligibility status. Use the role switcher at the top right to test reviewer permissions.
+                    Sign in with your tournament admin credentials to approve profiles or request corrections.
                   </p>
                 </div>
               </div>
@@ -232,34 +226,7 @@ export const AdminPlayerDetailPage: React.FC = () => {
                       <option value="withdrawn">Withdrawn</option>
                     </select>
                   </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="review_auction_status" className="text-sm font-semibold text-zinc-200">
-                      2. Auction Pool Eligibility
-                    </label>
-                    <select
-                      id="review_auction_status"
-                      value={auctionStatus}
-                      onChange={(e) => setAuctionStatus(e.target.value as AuctionStatus)}
-                      className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-3 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none"
-                    >
-                      <option value="not_reviewed">Not Reviewed / Pending Pool</option>
-                      <option value="eligible">Auction Eligible (Approved + Verified Fee)</option>
-                      <option value="ineligible">Ineligible for Auction</option>
-                    </select>
-                  </div>
                 </div>
-
-                {!isPaymentVerified && (
-                  <div className="rounded-xl border border-amber-500/30 bg-zinc-950 p-4 text-xs text-amber-200 flex items-start gap-2.5">
-                    <ShieldCheck size={18} className="mt-0.5 shrink-0 text-amber-400" />
-                    <span>
-                      Note: This player&apos;s fee payment is currently{' '}
-                      <strong className="uppercase">{payment?.status ?? 'pending'}</strong>. You can approve their profile details now, but they cannot be marked{' '}
-                      <strong>Auction Eligible</strong> until a Payment Verifier reconciles their payment.
-                    </span>
-                  </div>
-                )}
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="review_notes" className="text-sm font-semibold text-zinc-200">

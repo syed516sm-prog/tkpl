@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   AdminRole,
   AdminSession,
@@ -8,6 +8,7 @@ import type {
   PaymentRecord,
   PaymentStatus,
   PlayerRecord,
+  ReceiptPayload,
   RegistrationFormInput,
   RegistrationStatus,
   SafeStatusLookupResult,
@@ -24,95 +25,61 @@ import {
   normalizeIndianPhone,
   validateRegistrationForm,
 } from '../lib/validation';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { createSupabaseBackend, readSupabaseConfig, type SupabaseBackend } from '../lib/supabaseBackend';
+import * as data from '../lib/tournamentData';
+import type { RegistrationSubmitResponse } from '../lib/tournamentData';
+import { TournamentContext, useTournament, type TournamentContextValue } from './TournamentContextScope';
+
+export { useTournament };
+export type { RegistrationSubmitResponse, TournamentContextValue };
 
 const STORAGE_KEYS = {
-  SETTINGS: 'tkpl_v2_settings',
-  PLAYERS: 'tkpl_v2_players',
-  PAYMENTS: 'tkpl_v2_payments',
-  AUDIT: 'tkpl_v2_audit_logs',
-  SEQ: 'tkpl_v2_reg_seq',
-  ADMIN: 'tkpl_v2_admin_session',
-  IDEMPOTENCY: 'tkpl_v2_idempotency_keys',
+  SETTINGS: 'tkpl_v3_settings',
+  PLAYERS: 'tkpl_v3_players',
+  PAYMENTS: 'tkpl_v3_payments',
+  AUDIT: 'tkpl_v3_audit_logs',
+  SEQ: 'tkpl_v3_reg_seq',
+  ADMIN: 'tkpl_v3_admin_session',
+  IDEMPOTENCY: 'tkpl_v3_idempotency_keys',
+};
+
+const DEFAULT_ADMIN_PROFILE: AdminSession = {
+  user_id: 'adm-lead',
+  email: 'syed516.sm@gmail.com',
+  full_name: 'Syed · Tournament Administrator',
+  role: 'super_admin',
 };
 
 const ROLE_DEFAULT_PROFILES: Record<AdminRole, Omit<AdminSession, 'role'>> = {
   super_admin: {
-    user_id: 'adm-super',
-    email: 'mansoor@sultansports.in',
-    full_name: 'Mansoor · Sultan Sports Kadapa (Super Admin)',
+    user_id: 'adm-lead',
+    email: 'syed516.sm@gmail.com',
+    full_name: 'Syed · Tournament Administrator',
   },
   registration_reviewer: {
-    user_id: 'adm-reviewer',
-    email: 'sunil@nrsports.in',
-    full_name: 'Sunil · NR Sports Vempalli (Reviewer)',
+    user_id: 'adm-lead',
+    email: 'syed516.sm@gmail.com',
+    full_name: 'Tournament Administrator',
   },
   payment_verifier: {
-    user_id: 'adm-payment',
-    email: 'accounts@sultansports.in',
-    full_name: 'Sultan Sports & NR Sports Desk (Payment Verifier)',
+    user_id: 'adm-lead',
+    email: 'syed516.sm@gmail.com',
+    full_name: 'Tournament Administrator',
   },
   read_only_helper: {
-    user_id: 'adm-helper',
-    email: 'volunteer@tkpl-kadapa.in',
-    full_name: 'T-KPL Match Desk Helper (Read-Only)',
+    user_id: 'adm-lead',
+    email: 'syed516.sm@gmail.com',
+    full_name: 'Tournament Administrator',
   },
 };
 
-export interface RegistrationSubmitResponse {
-  player_id: string;
-  registration_no: string;
-  full_name: string;
-  payment_status: PaymentStatus;
-  created_at: string;
+export interface TournamentProviderProps {
+  children: React.ReactNode;
+  /** Defaults to the `VITE_SUPABASE_*` env; tests inject a fake backend here. */
+  supabase?: SupabaseBackend | null;
+  /** Explicit cloud on/off. Defaults to "are the public keys present?". */
+  isCloudMode?: boolean;
 }
-
-interface TournamentContextValue {
-  settings: TournamentSettings;
-  players: PlayerRecord[];
-  payments: PaymentRecord[];
-  auditLogs: AuditLogEntry[];
-  adminSession: AdminSession | null;
-  isCloudConnected: boolean;
-  loginAdmin: (role: AdminRole, customName?: string) => void;
-  logoutAdmin: () => void;
-  submitRegistration: (
-    input: RegistrationFormInput,
-    idempotencyKey: string
-  ) => Promise<RegistrationSubmitResponse>;
-  lookupStatus: (
-    registrationNo: string,
-    phone: string,
-    dateOfBirth: string
-  ) => Promise<SafeStatusLookupResult | null>;
-  submitApplicantPaymentProof: (params: {
-    registrationNo: string;
-    phone: string;
-    dateOfBirth: string;
-    method: PaymentMethod;
-    transactionRef: string;
-    receiptFileName?: string;
-  }) => Promise<SafeStatusLookupResult>;
-  updatePlayerReview: (params: {
-    playerId: string;
-    registrationStatus: RegistrationStatus;
-    auctionStatus: AuctionStatus;
-    reviewNotes: string;
-  }) => void;
-  updatePaymentVerification: (params: {
-    paymentId: string;
-    status: PaymentStatus;
-    method?: PaymentMethod;
-    transactionRef: string;
-    refundRef?: string;
-    notes: string;
-  }) => void;
-  updateTournamentSettings: (updates: Partial<TournamentSettings>) => void;
-  recordCsvExportAudit: (exportKind: 'all_players' | 'auction_eligible', count: number) => void;
-  resetDemoDatabase: () => void;
-}
-
-const TournamentContext = createContext<TournamentContextValue | undefined>(undefined);
 
 function loadFromStorage<T>(key: string, fallback: T): T {
   try {
@@ -124,18 +91,55 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
-export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Ignore storage quota / restricted-environment errors.
+  }
+}
+
+function isRazorpayPayment(payment: PaymentRecord | undefined): boolean {
+  return payment?.method === 'razorpay';
+}
+
+/**
+ * DEMO BRANCH (no Supabase keys): everything below runs on localStorage seeded
+ * with the sample players so the UI can be previewed. Online payments are
+ * rejected here because there is no server to verify them.
+ */
+export const TournamentProvider: React.FC<TournamentProviderProps> = ({
+  children,
+  supabase,
+  isCloudMode,
+}) => {
+  const envConfig = useMemo(
+    () =>
+      readSupabaseConfig({
+        VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+        VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      }),
+    []
+  );
+  const fallbackClient = useMemo<SupabaseBackend | null>(() => {
+    if (!envConfig.configured || !envConfig.url || !envConfig.anonKey) return null;
+    return createSupabaseBackend(envConfig.url, envConfig.anonKey);
+  }, [envConfig]);
+
+  const client = supabase === undefined ? fallbackClient : supabase;
+  const cloud = isCloudMode ?? Boolean(client);
+
   const [settings, setSettings] = useState<TournamentSettings>(() =>
-    loadFromStorage(STORAGE_KEYS.SETTINGS, INITIAL_TOURNAMENT_SETTINGS)
+    cloud ? INITIAL_TOURNAMENT_SETTINGS : loadFromStorage(STORAGE_KEYS.SETTINGS, INITIAL_TOURNAMENT_SETTINGS)
   );
   const [players, setPlayers] = useState<PlayerRecord[]>(() =>
-    loadFromStorage(STORAGE_KEYS.PLAYERS, INITIAL_PLAYERS)
+    cloud ? [] : loadFromStorage(STORAGE_KEYS.PLAYERS, INITIAL_PLAYERS)
   );
   const [payments, setPayments] = useState<PaymentRecord[]>(() =>
-    loadFromStorage(STORAGE_KEYS.PAYMENTS, INITIAL_PAYMENTS)
+    cloud ? [] : loadFromStorage(STORAGE_KEYS.PAYMENTS, INITIAL_PAYMENTS)
   );
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() =>
-    loadFromStorage(STORAGE_KEYS.AUDIT, INITIAL_AUDIT_LOGS)
+    cloud ? [] : loadFromStorage(STORAGE_KEYS.AUDIT, INITIAL_AUDIT_LOGS)
   );
   const [seqCounter, setSeqCounter] = useState<number>(() =>
     loadFromStorage(STORAGE_KEYS.SEQ, 106)
@@ -148,114 +152,170 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch {
-      // Ignore storage quota errors in restricted environments
-    }
-  }, [settings]);
-
+    if (cloud) return;
+    saveToStorage(STORAGE_KEYS.SETTINGS, settings);
+  }, [cloud, settings]);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PLAYERS, JSON.stringify(players));
-    } catch {
-      // Ignore
-    }
-  }, [players]);
-
+    if (cloud) return;
+    saveToStorage(STORAGE_KEYS.PLAYERS, players);
+  }, [cloud, players]);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PAYMENTS, JSON.stringify(payments));
-    } catch {
-      // Ignore
-    }
-  }, [payments]);
-
+    if (cloud) return;
+    saveToStorage(STORAGE_KEYS.PAYMENTS, payments);
+  }, [cloud, payments]);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.AUDIT, JSON.stringify(auditLogs));
-    } catch {
-      // Ignore
-    }
-  }, [auditLogs]);
-
+    if (cloud) return;
+    saveToStorage(STORAGE_KEYS.AUDIT, auditLogs);
+  }, [cloud, auditLogs]);
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SEQ, JSON.stringify(seqCounter));
-    } catch {
-      // Ignore
-    }
+    saveToStorage(STORAGE_KEYS.SEQ, seqCounter);
   }, [seqCounter]);
-
   useEffect(() => {
     try {
-      if (adminSession) {
-        localStorage.setItem(STORAGE_KEYS.ADMIN, JSON.stringify(adminSession));
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.ADMIN);
-      }
+      if (adminSession) localStorage.setItem(STORAGE_KEYS.ADMIN, JSON.stringify(adminSession));
+      else localStorage.removeItem(STORAGE_KEYS.ADMIN);
     } catch {
       // Ignore
     }
   }, [adminSession]);
-
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.IDEMPOTENCY, JSON.stringify(processedKeys));
-    } catch {
-      // Ignore
-    }
-  }, [processedKeys]);
+    if (cloud) return;
+    saveToStorage(STORAGE_KEYS.IDEMPOTENCY, processedKeys);
+  }, [cloud, processedKeys]);
 
-  const appendAudit = useCallback(
-    (entry: Omit<AuditLogEntry, 'id' | 'created_at'>) => {
-      const fullEntry: AuditLogEntry = {
+  const refreshAdminData = useCallback(async () => {
+    if (!client) return;
+    const bundle = await data.fetchAdminData(client);
+    setPlayers(bundle.players);
+    setPayments(bundle.payments);
+    setAuditLogs(bundle.auditLogs);
+  }, [client]);
+
+  // Public settings come from the one row everyone may read.
+  useEffect(() => {
+    let cancelled = false;
+    if (!client) return;
+    data
+      .fetchTournamentSettings(client)
+      .then((row) => {
+        if (!cancelled && row) setSettings(row);
+      })
+      .catch(() => {
+        // Keep the bundled defaults if settings cannot be read yet.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
+  const appendDemoAudit = useCallback((entry: Omit<AuditLogEntry, 'id' | 'created_at'>) => {
+    setAuditLogs((prev) => [
+      {
         ...entry,
         id: `aud-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         created_at: new Date().toISOString(),
-      };
-      setAuditLogs((prev) => [fullEntry, ...prev]);
+      },
+      ...prev,
+    ]);
+  }, []);
+
+  useEffect(() => {
+    if (!cloud || !client) return;
+    let cancelled = false;
+    data
+      .getCurrentAdminSession(client)
+      .then((session) => {
+        if (!cancelled && session) {
+          setAdminSession(session);
+          void refreshAdminData();
+        }
+      })
+      .catch(() => {
+        // Ignore initial session restoration failure
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client, cloud, refreshAdminData]);
+
+  const loginAdmin = useCallback(
+    (roleOrName?: string, customName?: string) => {
+      let displayName = DEFAULT_ADMIN_PROFILE.full_name;
+      if (customName && customName.trim()) {
+        displayName = customName.trim();
+      } else if (
+        roleOrName &&
+        !['super_admin', 'registration_reviewer', 'payment_verifier', 'read_only_helper'].includes(
+          roleOrName
+        )
+      ) {
+        displayName = roleOrName.trim();
+      }
+
+      setAdminSession({
+        ...DEFAULT_ADMIN_PROFILE,
+        full_name: displayName,
+      });
+      if (client) {
+        void refreshAdminData().catch(() => {});
+      }
     },
-    []
+    [client, refreshAdminData]
   );
 
-  const loginAdmin = useCallback((role: AdminRole, customName?: string) => {
-    const base = ROLE_DEFAULT_PROFILES[role];
-    setAdminSession({
-      ...base,
-      full_name: customName?.trim() ? customName.trim() : base.full_name,
-      role,
-    });
-  }, []);
+  const loginAdminWithPassword = useCallback(
+    async (email: string, pass: string) => {
+      if (!client) {
+        throw new Error('Supabase client is not configured.');
+      }
+      const session = await data.signInAdminWithPassword(client, email, pass);
+      setAdminSession(session);
+      await refreshAdminData();
+    },
+    [client, refreshAdminData]
+  );
 
-  const logoutAdmin = useCallback(() => {
+  const logoutAdmin = useCallback(async () => {
+    if (client) {
+      try {
+        await data.signOutAdmin(client);
+      } catch {
+        // Ignore signout error
+      }
+    }
     setAdminSession(null);
-  }, []);
+    try {
+      localStorage.removeItem(STORAGE_KEYS.ADMIN);
+    } catch {
+      // Ignore storage error
+    }
+  }, [client]);
 
   const submitRegistration = useCallback(
     async (
       input: RegistrationFormInput,
       idempotencyKey: string
     ): Promise<RegistrationSubmitResponse> => {
-      // 1. Check idempotency key to prevent accidental double-click duplicates
       if (idempotencyKey && processedKeys[idempotencyKey]) {
         return processedKeys[idempotencyKey];
       }
 
-      // 2. Enforce server-side form & deadline validation
       const validationErrors = validateRegistrationForm(input, settings);
       const firstError = Object.values(validationErrors)[0];
-      if (firstError) {
-        throw new Error(firstError);
+      if (firstError) throw new Error(firstError);
+
+      if (cloud && client) {
+        const result = await data.submitRegistration(client, input);
+        const response: RegistrationSubmitResponse = result;
+        if (idempotencyKey) {
+          setProcessedKeys((prev) => ({ ...prev, [idempotencyKey]: response }));
+        }
+        return response;
       }
 
+      // ---- demo branch (localStorage) ----
       const normalizedPhone = normalizeIndianPhone(input.phone);
-
-      // 3. Enforce unique mobile number constraint without leaking existing player details
-      const existingDuplicate = players.find(
-        (p) => normalizeIndianPhone(p.phone) === normalizedPhone
-      );
-      if (existingDuplicate) {
+      if (players.some((p) => normalizeIndianPhone(p.phone) === normalizedPhone)) {
         throw new Error(
           'A registration already exists with this mobile number. Use the Check Status page with your Registration ID and Date of Birth.'
         );
@@ -267,8 +327,6 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
       const registrationNo = `TKPL-2026-${String(nextNum).padStart(4, '0')}`;
       const playerId = `plr-${Date.now()}`;
-      const cleanTxRef = input.transaction_ref.trim();
-      const initialPaymentStatus: PaymentStatus = cleanTxRef ? 'submitted' : 'pending';
 
       const newPlayer: PlayerRecord = {
         id: playerId,
@@ -304,17 +362,22 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         player_phone: normalizedPhone,
         amount_paise: settings.fee_paise,
         currency: settings.currency,
-        method: input.payment_method,
-        transaction_ref: cleanTxRef,
+        method: 'razorpay',
+        transaction_ref: '',
         receipt_file_name: '',
-        status: initialPaymentStatus,
+        status: 'pending',
         verified_by: null,
         verifier_name: '',
         verified_at: null,
         refund_ref: '',
-        notes: cleanTxRef
-          ? 'Transaction reference submitted during registration; awaiting bank reconciliation.'
-          : 'Awaiting transaction reference submission.',
+        notes: 'Demo mode: online payment is not available until Supabase and Razorpay are configured.',
+        razorpay_order_id: '',
+        razorpay_payment_id: '',
+        receipt_no: '',
+        paid_at: null,
+        receipt_issued_at: null,
+        razorpay_handler: '',
+        razorpay_mode: '',
         created_at: nowIso,
         updated_at: nowIso,
       };
@@ -322,18 +385,18 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setPlayers((prev) => [newPlayer, ...prev]);
       setPayments((prev) => [newPayment, ...prev]);
 
-      appendAudit({
+      appendDemoAudit({
         actor_user_id: 'public-applicant',
         actor_name: newPlayer.full_name,
         actor_role: 'applicant',
         action: 'REGISTRATION_SUBMITTED',
         entity_type: 'player',
         entity_id: registrationNo,
-        summary: `New registration ${registrationNo} submitted (${newPlayer.locality}, ${newPlayer.role}). Payment status: ${initialPaymentStatus}.`,
+        summary: `New registration ${registrationNo} submitted (${newPlayer.locality}, ${newPlayer.role}). Payment pending.`,
         new_values: {
           registration_no: registrationNo,
           registration_status: 'submitted',
-          payment_status: initialPaymentStatus,
+          payment_status: 'pending',
         },
       });
 
@@ -341,17 +404,16 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         player_id: playerId,
         registration_no: registrationNo,
         full_name: newPlayer.full_name,
-        payment_status: initialPaymentStatus,
+        payment_status: 'pending',
         created_at: nowIso,
       };
 
       if (idempotencyKey) {
         setProcessedKeys((prev) => ({ ...prev, [idempotencyKey]: result }));
       }
-
       return result;
     },
-    [appendAudit, players, processedKeys, seqCounter, settings]
+    [appendDemoAudit, client, cloud, players, processedKeys, seqCounter, settings]
   );
 
   const lookupStatus = useCallback(
@@ -360,13 +422,14 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       phone: string,
       dateOfBirth: string
     ): Promise<SafeStatusLookupResult | null> => {
+      if (cloud && client) {
+        return data.lookupStatus(client, registrationNo, phone, dateOfBirth);
+      }
+
       const cleanReg = registrationNo.trim().toUpperCase();
       const cleanPhone = normalizeIndianPhone(phone);
       const cleanDob = dateOfBirth.trim();
-
-      if (!cleanReg || !cleanPhone || !cleanDob) {
-        return null;
-      }
+      if (!cleanReg || !cleanPhone || !cleanDob) return null;
 
       const matchedPlayer = players.find(
         (p) =>
@@ -374,13 +437,9 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           normalizeIndianPhone(p.phone) === cleanPhone &&
           p.date_of_birth === cleanDob
       );
-
-      if (!matchedPlayer) {
-        return null;
-      }
+      if (!matchedPlayer) return null;
 
       const matchedPayment = payments.find((pay) => pay.player_id === matchedPlayer.id);
-
       return {
         registration_no: matchedPlayer.registration_no,
         full_name: matchedPlayer.full_name,
@@ -394,118 +453,90 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         submitted_at: matchedPlayer.created_at,
       };
     },
-    [payments, players]
+    [client, cloud, payments, players]
   );
 
-  const submitApplicantPaymentProof = useCallback(
-    async (params: {
-      registrationNo: string;
-      phone: string;
-      dateOfBirth: string;
-      method: PaymentMethod;
-      transactionRef: string;
-      receiptFileName?: string;
-    }): Promise<SafeStatusLookupResult> => {
-      const cleanTx = params.transactionRef.trim();
-      if (cleanTx.length < 4) {
-        throw new Error('Please enter a valid UPI UTR or bank transaction reference number (at least 4 characters).');
+  const getReceipt = useCallback(
+    async (
+      registrationNo: string,
+      phone: string,
+      dateOfBirth: string
+    ): Promise<ReceiptPayload | null> => {
+      if (cloud && client) {
+        return data.getReceipt(client, registrationNo, phone, dateOfBirth);
       }
 
-      const cleanReg = params.registrationNo.trim().toUpperCase();
-      const cleanPhone = normalizeIndianPhone(params.phone);
-      const cleanDob = params.dateOfBirth.trim();
-
+      const cleanReg = registrationNo.trim().toUpperCase();
+      const cleanPhone = normalizeIndianPhone(phone);
+      const cleanDob = dateOfBirth.trim();
       const matchedPlayer = players.find(
         (p) =>
           p.registration_no.toUpperCase() === cleanReg &&
           normalizeIndianPhone(p.phone) === cleanPhone &&
           p.date_of_birth === cleanDob
       );
+      if (!matchedPlayer) return null;
 
-      if (!matchedPlayer) {
-        throw new Error('Could not verify applicant credentials. Check your Registration Number, Mobile Number and Date of Birth.');
+      const matchedPayment = payments.find((pay) => pay.player_id === matchedPlayer.id);
+      if (!matchedPayment || matchedPayment.status !== 'verified' || !matchedPayment.receipt_no) {
+        return null;
       }
-
-      const existingPayment = payments.find((pay) => pay.player_id === matchedPlayer.id);
-      if (existingPayment && existingPayment.status === 'verified') {
-        throw new Error('Your payment has already been verified by the organizers and cannot be overwritten.');
-      }
-
-      const nowIso = new Date().toISOString();
-
-      setPayments((prev) =>
-        prev.map((pay) =>
-          pay.player_id === matchedPlayer.id
-            ? {
-                ...pay,
-                method: params.method,
-                transaction_ref: cleanTx,
-                receipt_file_name: params.receiptFileName ?? pay.receipt_file_name,
-                status: 'submitted',
-                notes: 'Transaction reference submitted by applicant; awaiting admin reconciliation.',
-                updated_at: nowIso,
-              }
-            : pay
-        )
-      );
-
-      appendAudit({
-        actor_user_id: 'public-applicant',
-        actor_name: matchedPlayer.full_name,
-        actor_role: 'applicant',
-        action: 'PAYMENT_REF_SUBMITTED',
-        entity_type: 'payment',
-        entity_id: matchedPlayer.registration_no,
-        summary: `Applicant submitted ${params.method.toUpperCase()} reference (${cleanTx}) for ${matchedPlayer.registration_no}. Status set to submitted (unverified).`,
-        new_values: { status: 'submitted', transaction_ref: cleanTx, method: params.method },
-      });
-
       return {
         registration_no: matchedPlayer.registration_no,
         full_name: matchedPlayer.full_name,
         locality: matchedPlayer.locality,
         role: matchedPlayer.role,
-        registration_status: matchedPlayer.registration_status,
-        auction_status: matchedPlayer.auction_status,
-        review_notes: matchedPlayer.review_notes,
-        payment_status: 'submitted',
-        transaction_ref: cleanTx,
+        photo_url: matchedPlayer.photo_url || null,
+        amount_paise: matchedPayment.amount_paise,
+        currency: matchedPayment.currency,
+        receipt_no: matchedPayment.receipt_no,
+        paid_at: matchedPayment.paid_at,
+        razorpay_payment_id: matchedPayment.razorpay_payment_id,
+        razorpay_handler: matchedPayment.razorpay_handler,
+        razorpay_mode: matchedPayment.razorpay_mode,
+        status: matchedPayment.status,
         submitted_at: matchedPlayer.created_at,
       };
     },
-    [appendAudit, payments, players]
+    [client, cloud, payments, players]
   );
 
   const updatePlayerReview = useCallback(
-    (params: {
+    async (params: {
       playerId: string;
       registrationStatus: RegistrationStatus;
       auctionStatus: AuctionStatus;
       reviewNotes: string;
     }) => {
-      if (!adminSession || !canRolePerform(adminSession.role, 'review_player')) {
-        throw new Error('Access denied: Only Super Admins and Registration Reviewers can update player approval or auction status.');
+      if (!adminSession) {
+        throw new Error('Access denied: You must be signed in as an administrator.');
+      }
+
+      if (cloud && client) {
+        await data.updatePlayerReview(client, params);
+        await refreshAdminData();
+        return;
       }
 
       const targetPlayer = players.find((p) => p.id === params.playerId);
-      if (!targetPlayer) {
-        throw new Error('Player record not found.');
-      }
+      if (!targetPlayer) throw new Error('Player record not found.');
 
       const targetPayment = payments.find((pay) => pay.player_id === params.playerId);
 
-      // Enforce tournament integrity: cannot mark auction eligible unless approved AND payment verified
       if (params.auctionStatus === 'eligible' || params.auctionStatus === 'drafted') {
         if (params.registrationStatus !== 'approved') {
-          throw new Error('A player must have Registration Status set to Approved before becoming Auction Eligible.');
+          throw new Error(
+            'A player must have Registration Status set to Approved before becoming Auction Eligible.'
+          );
         }
         if (targetPayment?.status !== 'verified') {
-          throw new Error('A player cannot be marked Auction Eligible until their registration fee payment is Verified against the bank/UPI statement.');
+          throw new Error(
+            'A player cannot be marked Auction Eligible until their registration fee payment is Verified.'
+          );
         }
       }
 
       const nowIso = new Date().toISOString();
-
       setPlayers((prev) =>
         prev.map((p) =>
           p.id === params.playerId
@@ -520,7 +551,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         )
       );
 
-      appendAudit({
+      appendDemoAudit({
         actor_user_id: adminSession.user_id,
         actor_name: adminSession.full_name,
         actor_role: adminSession.role,
@@ -539,11 +570,11 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         },
       });
     },
-    [adminSession, appendAudit, payments, players]
+    [adminSession, appendDemoAudit, client, cloud, payments, players, refreshAdminData]
   );
 
   const updatePaymentVerification = useCallback(
-    (params: {
+    async (params: {
       paymentId: string;
       status: PaymentStatus;
       method?: PaymentMethod;
@@ -551,18 +582,24 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       refundRef?: string;
       notes: string;
     }) => {
-      if (!adminSession || !canRolePerform(adminSession.role, 'verify_payment')) {
-        throw new Error('Access denied: Only Super Admins and authorized Payment Verifiers can change payment status.');
+      if (!adminSession) {
+        throw new Error('Access denied: You must be signed in as an administrator.');
       }
 
       const targetPayment = payments.find((pay) => pay.id === params.paymentId);
-      if (!targetPayment) {
-        throw new Error('Payment record not found.');
+      if (!targetPayment) throw new Error('Payment record not found.');
+
+      if (isRazorpayPayment(targetPayment) && params.status !== 'refunded') {
+        throw new Error(
+          'Online Razorpay payments are verified automatically by signature. They cannot be changed by hand.'
+        );
       }
 
       const cleanTx = params.transactionRef.trim();
       if (params.status === 'verified' && cleanTx.length < 3) {
-        throw new Error('Cannot verify payment without recording a valid UPI UTR, bank reference or cash receipt number.');
+        throw new Error(
+          'Cannot verify payment without recording a valid UPI UTR, bank reference or cash receipt number.'
+        );
       }
 
       const cleanRefund = (params.refundRef ?? '').trim();
@@ -570,8 +607,20 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         throw new Error('Please provide a refund reference number when marking a payment as refunded.');
       }
 
-      const nowIso = new Date().toISOString();
+      if (cloud && client) {
+        await data.updatePayment(client, {
+          paymentId: params.paymentId,
+          status: params.status,
+          method: params.method ?? targetPayment.method,
+          transactionRef: cleanTx,
+          refundRef: cleanRefund,
+          notes: params.notes,
+        });
+        await refreshAdminData();
+        return;
+      }
 
+      const nowIso = new Date().toISOString();
       setPayments((prev) =>
         prev.map((pay) =>
           pay.id === params.paymentId
@@ -582,8 +631,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 transaction_ref: cleanTx,
                 refund_ref: cleanRefund,
                 notes: params.notes.trim(),
-                verified_by:
-                  params.status === 'verified' ? adminSession.user_id : pay.verified_by,
+                verified_by: params.status === 'verified' ? adminSession.user_id : pay.verified_by,
                 verifier_name:
                   params.status === 'verified' ? adminSession.full_name : pay.verifier_name,
                 verified_at: params.status === 'verified' ? nowIso : pay.verified_at,
@@ -593,7 +641,6 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         )
       );
 
-      // If payment is no longer verified, automatically downgrade auction_status if it was 'eligible'
       if (params.status !== 'verified') {
         setPlayers((prev) =>
           prev.map((pl) =>
@@ -604,7 +651,7 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         );
       }
 
-      appendAudit({
+      appendDemoAudit({
         actor_user_id: adminSession.user_id,
         actor_name: adminSession.full_name,
         actor_role: adminSession.role,
@@ -624,27 +671,31 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         },
       });
     },
-    [adminSession, appendAudit, payments]
+    [adminSession, appendDemoAudit, client, cloud, payments, refreshAdminData]
   );
 
   const updateTournamentSettings = useCallback(
-    (updates: Partial<TournamentSettings>) => {
-      if (!adminSession || !canRolePerform(adminSession.role, 'manage_settings')) {
-        throw new Error('Access denied: Only Super Admins can modify tournament settings.');
+    async (updates: Partial<TournamentSettings>) => {
+      if (!adminSession) {
+        throw new Error('Access denied: You must be signed in as an administrator.');
+      }
+
+      if (cloud && client) {
+        await data.updateSettings(client, updates);
+        const row = await data.fetchTournamentSettings(client);
+        if (row) setSettings(row);
+        return;
       }
 
       const nowIso = new Date().toISOString();
-      setSettings((prev) => {
-        const next: TournamentSettings = {
-          ...prev,
-          ...updates,
-          updated_by: adminSession.full_name,
-          updated_at: nowIso,
-        };
-        return next;
-      });
+      setSettings((prev) => ({
+        ...prev,
+        ...updates,
+        updated_by: adminSession.full_name,
+        updated_at: nowIso,
+      }));
 
-      appendAudit({
+      appendDemoAudit({
         actor_user_id: adminSession.user_id,
         actor_name: adminSession.full_name,
         actor_role: adminSession.role,
@@ -660,36 +711,49 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         new_values: updates as Record<string, unknown>,
       });
     },
-    [adminSession, appendAudit, settings]
+    [adminSession, appendDemoAudit, client, cloud, settings]
   );
 
   const recordCsvExportAudit = useCallback(
-    (exportKind: 'all_players' | 'auction_eligible', count: number) => {
-      if (!adminSession || !canRolePerform(adminSession.role, 'export_csv')) {
-        throw new Error('Access denied: Your admin role is not permitted to export player data.');
+    async (exportKind: 'all_players' | 'auction_eligible' | 'payments', count: number) => {
+      if (!adminSession) {
+        throw new Error('Access denied: You must be signed in as an administrator to export data.');
       }
-      appendAudit({
+      if (cloud && client) {
+        await data.recordExportAudit(client, exportKind, count);
+        return;
+      }
+      appendDemoAudit({
         actor_user_id: adminSession.user_id,
         actor_name: adminSession.full_name,
         actor_role: adminSession.role,
-        action: 'ROSTER_CSV_EXPORTED',
+        action: exportKind === 'payments' ? 'PAYMENTS_CSV_EXPORTED' : 'ROSTER_CSV_EXPORTED',
         entity_type: 'export',
         entity_id: exportKind,
-        summary: `Exported ${count} records (${exportKind === 'auction_eligible' ? 'Auction-Eligible Pool Only' : 'Full Roster CSV'}).`,
+        summary: `Exported ${count} records (${
+          exportKind === 'auction_eligible'
+            ? 'Auction-Eligible Pool Only'
+            : exportKind === 'payments'
+              ? 'Payment Ledger'
+              : 'Full Roster CSV'
+        }).`,
         new_values: { exportKind, count },
       });
     },
-    [adminSession, appendAudit]
+    [adminSession, appendDemoAudit, client, cloud]
   );
 
   const resetDemoDatabase = useCallback(() => {
+    if (cloud) {
+      throw new Error('Reset is only available in local demo mode; the cloud database is never wiped from the browser.');
+    }
     setSettings(INITIAL_TOURNAMENT_SETTINGS);
     setPlayers(INITIAL_PLAYERS);
     setPayments(INITIAL_PAYMENTS);
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setSeqCounter(106);
     setProcessedKeys({});
-  }, []);
+  }, [cloud]);
 
   return (
     <TournamentContext.Provider
@@ -699,12 +763,13 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         payments,
         auditLogs,
         adminSession,
-        isCloudConnected: isSupabaseConfigured,
+        isCloudConnected: cloud,
         loginAdmin,
+        loginAdminWithPassword,
         logoutAdmin,
         submitRegistration,
         lookupStatus,
-        submitApplicantPaymentProof,
+        getReceipt,
         updatePlayerReview,
         updatePaymentVerification,
         updateTournamentSettings,
@@ -717,10 +782,3 @@ export const TournamentProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
 };
 
-export function useTournament(): TournamentContextValue {
-  const ctx = useContext(TournamentContext);
-  if (!ctx) {
-    throw new Error('useTournament must be used inside a TournamentProvider');
-  }
-  return ctx;
-}

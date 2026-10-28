@@ -24,7 +24,7 @@ export type PaymentStatus =
   | 'failed'
   | 'refunded';
 
-export type PaymentMethod = 'upi' | 'bank_transfer' | 'cash_organizer';
+export type PaymentMethod = 'razorpay' | 'upi' | 'bank_transfer' | 'cash_organizer';
 
 export type AuctionStatus =
   | 'not_reviewed'
@@ -79,6 +79,13 @@ export interface PaymentRecord {
   verified_at: string | null;
   refund_ref: string;
   notes: string;
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  receipt_no: string;
+  paid_at: string | null;
+  receipt_issued_at: string | null;
+  razorpay_handler: string;
+  razorpay_mode: string;
   created_at: string;
   updated_at: string;
 }
@@ -139,8 +146,28 @@ export interface RegistrationFormInput {
   photo_file_name: string;
   rules_acknowledged: boolean;
   marketing_consent: boolean;
-  payment_method: PaymentMethod;
-  transaction_ref: string;
+  /** @deprecated fees are paid online; kept only for older callers. */
+  payment_method?: PaymentMethod;
+  /** @deprecated fees are paid online; kept only for older callers. */
+  transaction_ref?: string;
+}
+
+/** Everything the receipt card needs. Rendered client-side only, never a file URL. */
+export interface ReceiptPayload {
+  registration_no: string;
+  full_name: string;
+  locality: string;
+  role: PlayingRole;
+  photo_url: string | null;
+  amount_paise: number;
+  currency: string;
+  receipt_no: string;
+  paid_at: string | null;
+  razorpay_payment_id: string;
+  razorpay_handler: string;
+  razorpay_mode: string;
+  status: PaymentStatus;
+  submitted_at: string | null;
 }
 
 export interface SafeStatusLookupResult {

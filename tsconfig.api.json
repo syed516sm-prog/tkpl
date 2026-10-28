@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "moduleDetection": "force",
+    "rootDir": ".",
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "outDir": "./node_modules/.cache/tkpl-api-types",
+    "composite": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node"]
+  },
+  "include": ["api"]
+}

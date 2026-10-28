@@ -14,7 +14,6 @@ import {
   maskPhoneForReadOnly,
 } from '../../core/lib/validation';
 import {
-  AuctionBadge,
   PaymentBadge,
   RegistrationBadge,
   RoleLabel,
@@ -27,7 +26,6 @@ export const AdminPlayersPage: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [regStatusFilter, setRegStatusFilter] = useState<string>('all');
   const [payStatusFilter, setPayStatusFilter] = useState<string>('all');
-  const [auctionFilter, setAuctionFilter] = useState<string>('all');
   const [exportFeedback, setExportFeedback] = useState<string>('');
 
   const paymentByPlayerId = useMemo(() => {
@@ -47,7 +45,6 @@ export const AdminPlayersPage: React.FC = () => {
       if (roleFilter !== 'all' && pl.role !== roleFilter) return false;
       if (regStatusFilter !== 'all' && pl.registration_status !== regStatusFilter) return false;
       if (payStatusFilter !== 'all' && payStatus !== payStatusFilter) return false;
-      if (auctionFilter !== 'all' && pl.auction_status !== auctionFilter) return false;
 
       if (!q) return true;
       return (
@@ -57,30 +54,25 @@ export const AdminPlayersPage: React.FC = () => {
         pl.phone.includes(q)
       );
     });
-  }, [auctionFilter, payStatusFilter, paymentByPlayerId, players, regStatusFilter, roleFilter, searchQuery]);
+  }, [payStatusFilter, paymentByPlayerId, players, regStatusFilter, roleFilter, searchQuery]);
 
-  const canExport = canRolePerform(adminSession?.role, 'export_csv');
-
-  const handleDownloadCsv = (onlyAuctionEligible: boolean) => {
-    if (!canExport) return;
-    const csv = buildSafePlayerRosterCsv(players, payments, { onlyAuctionEligible });
+  const handleDownloadCsv = () => {
+    const csv = buildSafePlayerRosterCsv(players, payments, { onlyAuctionEligible: false });
     const rowCount = csv.split('\n').length - 1;
-    recordCsvExportAudit(onlyAuctionEligible ? 'auction_eligible' : 'all_players', rowCount);
+    recordCsvExportAudit('all_players', rowCount);
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = onlyAuctionEligible
-      ? `TKPL_Auction_Eligible_Pool_${new Date().toISOString().slice(0, 10)}.csv`
-      : `TKPL_Full_Player_Roster_${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `TKPL_Registered_Players_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
     setExportFeedback(
-      `Exported ${rowCount} player records (${onlyAuctionEligible ? 'Auction-Eligible Pool' : 'Full Roster'}) and logged to security audit trail.`
+      `Exported ${rowCount} registered player records and logged to security audit trail.`
     );
   };
 
@@ -89,40 +81,23 @@ export const AdminPlayersPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-50">
-            Player Roster & Profile Review
+            Registered Players Roster
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Search, filter and inspect registered players. Export verified pools for the auction desk.
+            Search, filter, and review player profiles. Export clean player lists anytime.
           </p>
         </div>
 
         {/* CSV Export Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
-          {canExport ? (
-            <>
-              <button
-                type="button"
-                onClick={() => handleDownloadCsv(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-amber-300 active:scale-[0.98]"
-              >
-                <FileCsv size={18} weight="bold" />
-                <span>Export Auction-Eligible CSV</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDownloadCsv(false)}
-                className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-xs sm:text-sm font-semibold text-zinc-200 hover:bg-zinc-800 active:scale-[0.98]"
-              >
-                <FileCsv size={18} />
-                <span>Export Full Roster CSV</span>
-              </button>
-            </>
-          ) : (
-            <div className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-800 bg-zinc-900/90 px-3.5 py-2 text-xs text-zinc-400">
-              <LockKey size={15} className="text-amber-400" />
-              <span>CSV Export restricted to Super Admin & Reviewer roles</span>
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={handleDownloadCsv}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98]"
+          >
+            <FileCsv size={18} weight="bold" />
+            <span>Export Registered Players CSV</span>
+          </button>
         </div>
       </div>
 
@@ -203,21 +178,6 @@ export const AdminPlayersPage: React.FC = () => {
               <option value="refunded">Refunded</option>
             </select>
           </div>
-
-          {/* Auction Pool Filter */}
-          <div>
-            <select
-              aria-label="Filter by Auction Status"
-              value={auctionFilter}
-              onChange={(e) => setAuctionFilter(e.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs sm:text-sm text-zinc-200"
-            >
-              <option value="all">All Auction States</option>
-              <option value="eligible">Auction Eligible</option>
-              <option value="not_reviewed">Not in Pool Yet</option>
-              <option value="ineligible">Ineligible</option>
-            </select>
-          </div>
         </div>
 
         <div className="flex items-center justify-between text-xs text-zinc-400 pt-1">
@@ -242,14 +202,13 @@ export const AdminPlayersPage: React.FC = () => {
                 <th className="py-3.5 px-3">Role</th>
                 <th className="py-3.5 px-3">Profile Status</th>
                 <th className="py-3.5 px-3">Payment Status</th>
-                <th className="py-3.5 px-3">Auction Pool</th>
                 <th className="py-3.5 pl-3 pr-5 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/70">
               {filteredPlayers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-10 text-center text-sm text-zinc-400">
+                  <td colSpan={6} className="py-10 text-center text-sm text-zinc-400">
                     No players match the current search or filter criteria.
                   </td>
                 </tr>
@@ -291,10 +250,6 @@ export const AdminPlayersPage: React.FC = () => {
 
                       <td className="py-4 px-3">
                         <PaymentBadge status={pay?.status ?? 'pending'} />
-                      </td>
-
-                      <td className="py-4 px-3">
-                        <AuctionBadge status={pl.auction_status} />
                       </td>
 
                       <td className="py-4 pl-3 pr-5 text-right">

@@ -27,7 +27,7 @@ const ORGANIZERS: Organizer[] = [
     place: 'Vempalli',
     phone: '8919155512',
     photo: '/assets/organizer-sunil.jpeg',
-    logo: '/assets/nr-sports-logo.jpeg',
+    logo: '/assets/nr-sports-logo.png',
     accent: 'lime',
   },
 ];

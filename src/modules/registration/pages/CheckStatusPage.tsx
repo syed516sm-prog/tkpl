@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlass,
   ShieldCheck,
@@ -7,12 +7,16 @@ import {
   CheckCircle,
   CurrencyInr,
   Sparkle,
+  LockSimple,
+  Receipt,
+  Ticket,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import { formatInrFromPaise } from '../../core/lib/validation';
-import type { PaymentMethod, SafeStatusLookupResult } from '../../core/types/tkpl';
+import type { SafeStatusLookupResult } from '../../core/types/tkpl';
+import { buildPayPrompt } from '../../core/lib/paymentApi';
+import { runRegistrationPayment } from '../../core/lib/checkout';
 import {
-  AuctionBadge,
   PaymentBadge,
   RegistrationBadge,
   RoleLabel,
@@ -26,8 +30,9 @@ interface PrefillLocationState {
 
 export const CheckStatusPage: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const prefill = (location.state as PrefillLocationState | null) ?? null;
-  const { settings, lookupStatus, submitApplicantPaymentProof } = useTournament();
+  const { settings, lookupStatus, getReceipt, isCloudConnected } = useTournament();
 
   const [registrationNo, setRegistrationNo] = useState(prefill?.prefillRegNo ?? '');
   const [phone, setPhone] = useState(prefill?.prefillPhone ?? '');
@@ -37,12 +42,14 @@ export const CheckStatusPage: React.FC = () => {
   const [lookupError, setLookupError] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
 
-  // Payment proof submission state for pending/failed payments
-  const [payMethod, setPayMethod] = useState<PaymentMethod>('upi');
-  const [txRef, setTxRef] = useState<string>('');
+  // Online payment + receipt actions
+  const [isPaying, setIsPaying] = useState(false);
+  const [isOpeningReceipt, setIsOpeningReceipt] = useState(false);
   const [payFeedback, setPayFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+
+  const feeLabel = formatInrFromPaise(settings.fee_paise);
 
   const handleLookup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,31 +76,59 @@ export const CheckStatusPage: React.FC = () => {
     }
 
     setLookupResult(res);
-    setTxRef(res.transaction_ref || '');
   };
 
-  const handlePaymentProofSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCompletePayment = async () => {
+    if (!lookupResult || isPaying) return;
     setPayFeedback(null);
+    setIsPaying(true);
     try {
-      const updated = await submitApplicantPaymentProof({
-        registrationNo,
+      const outcome = await runRegistrationPayment({
+        registration_no: lookupResult.registration_no,
         phone,
-        dateOfBirth,
-        method: payMethod,
-        transactionRef: txRef,
+        date_of_birth: dateOfBirth,
+        full_name: lookupResult.full_name,
       });
-      setLookupResult(updated);
+      if (outcome.type === 'success') {
+        navigate('/receipt', {
+          state: { receipt: outcome.receipt, phone, date_of_birth: dateOfBirth },
+        });
+        return;
+      }
       setPayFeedback({
-        type: 'success',
-        message:
-          'Transaction reference recorded as Submitted. An authorized payment admin will verify it against the bank/UPI statement.',
+        type: 'error',
+        message: buildPayPrompt(lookupResult.registration_no, feeLabel),
       });
     } catch (err) {
       setPayFeedback({
         type: 'error',
-        message: err instanceof Error ? err.message : 'Could not submit payment reference.',
+        message: err instanceof Error ? err.message : 'Could not complete the payment. Please retry.',
       });
+    } finally {
+      setIsPaying(false);
+    }
+  };
+
+  const handleViewReceipt = async () => {
+    if (!lookupResult || isOpeningReceipt) return;
+    setPayFeedback(null);
+    setIsOpeningReceipt(true);
+    try {
+      const receipt = await getReceipt(lookupResult.registration_no, phone, dateOfBirth);
+      if (!receipt) {
+        setPayFeedback({
+          type: 'error',
+          message: 'No receipt has been issued for this registration yet.',
+        });
+        return;
+      }
+      navigate('/receipt', {
+        state: { receipt, phone, date_of_birth: dateOfBirth },
+      });
+    } catch {
+      setPayFeedback({ type: 'error', message: 'Could not open the receipt. Please retry.' });
+    } finally {
+      setIsOpeningReceipt(false);
     }
   };
 
@@ -102,6 +137,7 @@ export const CheckStatusPage: React.FC = () => {
     setPhone(ph);
     setDateOfBirth(dob);
     setLookupError('');
+    setLookupResult(null);
     setPayFeedback(null);
   };
 
@@ -110,48 +146,50 @@ export const CheckStatusPage: React.FC = () => {
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
         <div className="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-6 sm:p-8">
           <div className="flex items-center gap-2.5 text-emerald-400">
-            <ShieldCheck size={24} weight="duotone" />
+            <Ticket size={24} weight="duotone" />
             <span className="text-xs font-semibold uppercase tracking-wider">
-              Privacy-Protected Lookup
+              Player Ticket & Entry Locker
             </span>
           </div>
           <h1 className="mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-50">
-            Check Registration & Payment Status
+            Find My Ticket & Registration
           </h1>
           <p className="mt-2 text-sm text-zinc-300 leading-relaxed">
-            To protect player privacy, status checks require your Registration Number, Mobile Number and Date of Birth together.
+            Enter your registration details below to download your official T-KPL tournament entry pass or check your entry status.
           </p>
 
-          {/* Quick Demo Fill Bar for Testing */}
-          <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/90 p-3.5 text-xs text-zinc-400">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
-                <Sparkle size={14} weight="fill" />
-                <span>Quick Test Profiles:</span>
-              </span>
-              <button
-                type="button"
-                onClick={() => fillDemoPlayer('TKPL-2026-0101', '9848011223', '1999-04-14')}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-emerald-500/50 hover:text-emerald-300 transition"
-              >
-                Syed Irfan (Approved & Auction Eligible)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoPlayer('TKPL-2026-0105', '7989234561', '1998-07-30')}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-amber-500/50 hover:text-amber-300 transition"
-              >
-                P. Harish Kumar (Payment Pending)
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemoPlayer('TKPL-2026-0104', '8897633445', '2000-01-19')}
-                className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-orange-500/50 hover:text-orange-300 transition"
-              >
-                G. Sai Charan (Needs Photo Correction)
-              </button>
+          {/* Quick Demo Fill Bar for Testing (Only shown in offline demo mode) */}
+          {!isCloudConnected && (
+            <div className="mt-5 rounded-xl border border-zinc-800 bg-zinc-950/90 p-3.5 text-xs text-zinc-400">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-300">
+                  <Sparkle size={14} weight="fill" />
+                  <span>Quick Test Profiles:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => fillDemoPlayer('TKPL-2026-0101', '9848011223', '1999-04-14')}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-emerald-500/50 hover:text-emerald-300 transition"
+                >
+                  Syed Irfan (Approved & Confirmed Entry)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoPlayer('TKPL-2026-0105', '7989234561', '1998-07-30')}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-amber-500/50 hover:text-amber-300 transition"
+                >
+                  P. Harish Kumar (Payment Pending)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fillDemoPlayer('TKPL-2026-0104', '8897633445', '2000-01-19')}
+                  className="rounded-lg border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-zinc-200 hover:border-orange-500/50 hover:text-orange-300 transition"
+                >
+                  G. Sai Charan (Needs Photo Correction)
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           <form onSubmit={handleLookup} noValidate className="mt-6 space-y-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -205,8 +243,8 @@ export const CheckStatusPage: React.FC = () => {
               type="submit"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-zinc-950 transition hover:bg-emerald-400 active:scale-[0.98]"
             >
-              <MagnifyingGlass size={18} weight="bold" />
-              <span>Check My Status</span>
+              <Ticket size={18} weight="bold" />
+              <span>Find My Ticket & Registration</span>
             </button>
           </form>
         </div>
@@ -250,27 +288,20 @@ export const CheckStatusPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Three Separate Status Pillars */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {/* Two Status Pillars */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
                 <span className="block text-xs font-medium text-zinc-400 mb-2">
-                  1. Profile Review Status
+                  1. Player Profile Status
                 </span>
                 <RegistrationBadge status={lookupResult.registration_status} />
               </div>
 
               <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
                 <span className="block text-xs font-medium text-zinc-400 mb-2">
-                  2. Fee Verification Status
+                  2. Entry Confirmation & Fee
                 </span>
                 <PaymentBadge status={lookupResult.payment_status} />
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <span className="block text-xs font-medium text-zinc-400 mb-2">
-                  3. Auction Pool Status
-                </span>
-                <AuctionBadge status={lookupResult.auction_status} />
               </div>
             </div>
 
@@ -284,80 +315,71 @@ export const CheckStatusPage: React.FC = () => {
               </div>
             )}
 
-            {/* Submit or Update Payment Reference if not yet Verified */}
-            {lookupResult.payment_status !== 'verified' && lookupResult.payment_status !== 'refunded' && (
-              <form
-                onSubmit={handlePaymentProofSubmit}
-                className="rounded-xl border border-amber-500/30 bg-zinc-950 p-5 space-y-4"
-              >
+            {/* Payment + receipt actions by payment status */}
+            {lookupResult.payment_status === 'verified' ? (
+              <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 p-5 space-y-3">
+                <div className="flex items-center gap-2 text-emerald-300">
+                  <Ticket size={20} weight="bold" />
+                  <h3 className="text-base font-bold text-zinc-100">
+                    Tournament Entry Confirmed · Official Ticket Ready
+                  </h3>
+                </div>
+                <p className="text-xs leading-relaxed text-zinc-300">
+                  Your {feeLabel} registration fee was verified by Razorpay. Your entry into the tournament is confirmed! Download your official player ticket below as a PNG image or print to save as PDF.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleViewReceipt}
+                  disabled={isOpeningReceipt}
+                  className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-60 active:scale-[0.98]"
+                >
+                  <Ticket size={16} weight="bold" />
+                  <span>{isOpeningReceipt ? 'Opening ticket…' : 'View / Download Official Ticket'}</span>
+                </button>
+              </div>
+            ) : lookupResult.payment_status === 'refunded' ? (
+              <div className="rounded-xl border border-purple-500/30 bg-purple-950/20 p-5 text-sm text-purple-200">
+                This registration fee has been refunded. Contact {settings.contact_text} if you
+                think this is a mistake.
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-500/30 bg-zinc-950 p-5 space-y-3">
                 <div className="flex items-center gap-2 text-amber-300">
                   <CurrencyInr size={20} weight="bold" />
                   <h3 className="text-base font-bold text-zinc-100">
-                    Submit or Update Fee Payment Reference ({formatInrFromPaise(settings.fee_paise)})
+                    Payment not completed ({feeLabel})
                   </h3>
                 </div>
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Official UPI ID: <strong className="font-mono text-zinc-200">{settings.upi_id}</strong>. Submitting a reference sets your payment status to Submitted until reconciled by the payment admin.
+                <p className="text-xs leading-relaxed text-zinc-400">
+                  {buildPayPrompt(lookupResult.registration_no, feeLabel)} Pay online with UPI (PhonePe, Google Pay,
+                  Paytm) — your receipt is issued immediately after verification.
                 </p>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="applicant_pay_method" className="text-xs font-semibold text-zinc-300">
-                      Payment Method
-                    </label>
-                    <select
-                      id="applicant_pay_method"
-                      value={payMethod}
-                      onChange={(e) => setPayMethod(e.target.value as PaymentMethod)}
-                      className="rounded-xl border border-zinc-700 bg-zinc-900 px-3 py-2.5 text-sm text-zinc-100"
-                    >
-                      <option value="upi">UPI Transfer</option>
-                      <option value="bank_transfer">Bank Transfer</option>
-                      <option value="cash_organizer">Cash to Organizer</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="applicant_tx_ref" className="text-xs font-semibold text-zinc-300">
-                      UPI UTR / Receipt Reference <span className="text-rose-400">*</span>
-                    </label>
-                    <input
-                      id="applicant_tx_ref"
-                      type="text"
-                      required
-                      value={txRef}
-                      onChange={(e) => setTxRef(e.target.value)}
-                      placeholder="12-digit UTR or Receipt No."
-                      className="rounded-xl border border-zinc-700 bg-zinc-900 px-3.5 py-2.5 text-sm font-mono text-zinc-100 placeholder-zinc-500"
-                    />
-                  </div>
-                </div>
-
-                {payFeedback && (
-                  <div
-                    role="alert"
-                    className={`flex items-center gap-2 rounded-lg p-3 text-xs font-medium ${
-                      payFeedback.type === 'success'
-                        ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                        : 'border border-rose-500/30 bg-rose-500/10 text-rose-300'
-                    }`}
-                  >
-                    {payFeedback.type === 'success' ? (
-                      <CheckCircle size={16} weight="fill" />
-                    ) : (
-                      <WarningCircle size={16} weight="fill" />
-                    )}
-                    <span>{payFeedback.message}</span>
-                  </div>
-                )}
-
                 <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-bold text-zinc-950 hover:bg-amber-300 active:scale-[0.98]"
+                  type="button"
+                  onClick={handleCompletePayment}
+                  disabled={isPaying}
+                  className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-4 py-2.5 text-xs font-bold text-zinc-950 transition hover:bg-amber-300 disabled:opacity-60 active:scale-[0.98]"
                 >
-                  <span>Save Payment Reference</span>
+                  <LockSimple size={15} weight="bold" />
+                  <span>{isPaying ? 'Opening secure checkout…' : `Complete Payment · ${feeLabel}`}</span>
                 </button>
-              </form>
+              </div>
+            )}
+
+            {payFeedback && (
+              <div
+                role="alert"
+                className={payFeedback.type === 'success'
+                  ? 'flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs font-medium text-emerald-300'
+                  : 'flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs font-medium text-rose-300'}
+              >
+                {payFeedback.type === 'success' ? (
+                  <CheckCircle size={16} weight="fill" className="mt-0.5 shrink-0" />
+                ) : (
+                  <WarningCircle size={16} weight="fill" className="mt-0.5 shrink-0" />
+                )}
+                <span>{payFeedback.message}</span>
+              </div>
             )}
           </div>
         )}

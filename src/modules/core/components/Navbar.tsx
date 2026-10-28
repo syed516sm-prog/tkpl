@@ -24,9 +24,9 @@ export const Navbar: React.FC = () => {
     { label: 'Home', to: '/', isActive: (p) => isActive(p, '/') },
     { label: 'Register', to: '/register', isActive: (p) => isActive(p, '/register') },
     {
-      label: 'Check Status',
-      to: '/check-status',
-      isActive: (p) => isActive(p, '/check-status'),
+      label: 'Find Ticket',
+      to: '/find-ticket',
+      isActive: (p) => p.startsWith('/find-ticket') || p.startsWith('/check-status'),
     },
     {
       label: adminSession ? 'Admin Desk' : 'Admin',
@@ -63,8 +63,13 @@ export const Navbar: React.FC = () => {
     };
   }, [menuOpen]);
 
+  // The receipt prints on its own paper: no navigation chrome.
+  const hideInPrint = location.pathname.startsWith('/receipt');
+
   return (
-    <header className="sticky top-0 z-50 border-b border-brand-line/80 bg-brand-ink/85 backdrop-blur-xl">
+    <header
+      className={`${hideInPrint ? 'no-print ' : ''}sticky top-0 z-50 border-b border-brand-line/80 bg-brand-ink/85 backdrop-blur-xl`}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link
           to="/"
