@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
-import { orderReceiptFor } from '../razorpay/create-order';
-import { createReconcileHandler } from '../razorpay/reconcile';
+import { orderReceiptFor } from '../api/razorpay/create-order';
+import { createReconcileHandler } from '../api/razorpay/reconcile';
 
 const FIXTURE_KEY_ID = 'rzp_test_FAKEkeyId0001';
 const FIXTURE_SECRET = 'fixture_secret_do_not_use_in_production';

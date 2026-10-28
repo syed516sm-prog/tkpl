@@ -31,8 +31,8 @@ vi.mock('@supabase/supabase-js', () => {
   return { createClient: () => ({ rpc, from, auth: {} }) };
 });
 import { createHmac } from 'node:crypto';
-import { verifyRazorpaySignature } from '../_lib/razorpay';
-import { createVerifyPaymentHandler } from '../razorpay/verify-payment';
+import { verifyRazorpaySignature } from '../api/_lib/razorpay';
+import { createVerifyPaymentHandler } from '../api/razorpay/verify-payment';
 
 /** Fixture credentials only — never a real Razorpay key. */
 const FIXTURE_KEY_ID = 'rzp_test_FAKEkeyId0001';

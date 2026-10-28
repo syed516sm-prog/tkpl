@@ -1,0 +1,9 @@
+tests
+**/*.test.ts
+**/*.test.tsx
+**/__tests__
+src/modules/**/test
+assets
+experiments
+scripts
+*.md
