@@ -885,7 +885,7 @@ begin
   -- A Razorpay row is machine-verifiable: it may only be Verified, Refunded or
   -- Failed. It can never be pushed back to "submitted" (that would let someone
   -- re-attach a different UTR to a paid online order).
-  if old.method = 'razorpay' and new.status in ('submitted', 'pending') then
+  if old.method = 'razorpay' and old.status in ('verified', 'refunded') and new.status in ('submitted', 'pending') then
     raise exception 'ONLINE_PAYMENT_LOCKED: a Razorpay payment can only be marked Verified, Failed or Refunded.';
   end if;
 
