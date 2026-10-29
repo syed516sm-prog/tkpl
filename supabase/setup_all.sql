@@ -1176,18 +1176,13 @@ begin
   -- The photo bucket is private; hand back a 10-minute signed link only after
   -- the three-factor check above has passed. A missing photo must not break the
   -- receipt, so any storage error just leaves the photo empty.
-  begin
-    v_photo_url := (storage.create_signed_url('player-photos', v_player.photo_path, 600)).signed_url;
-  exception when others then
-    v_photo_url := null;
-  end;
-
   return jsonb_build_object(
     'registration_no', v_player.registration_no,
     'full_name', v_player.full_name,
     'locality', v_player.locality,
     'role', v_player.role,
-    'photo_url', v_photo_url,
+    'photo_path', v_player.photo_path,
+    'photo_url', v_player.photo_path,
     'amount_paise', v_payment.amount_paise,
     'currency', v_payment.currency,
     'receipt_no', v_payment.receipt_no,

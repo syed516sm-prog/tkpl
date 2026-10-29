@@ -265,16 +265,26 @@ export const CheckStatusPage: React.FC = () => {
         {lookupResult && (
           <div className="mt-6 space-y-6 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-6 sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4 border-b border-zinc-800 pb-5">
-              <div>
-                <span className="font-mono text-xs font-bold text-emerald-400">
-                  {lookupResult.registration_no}
-                </span>
-                <h2 className="mt-1 text-2xl font-bold text-zinc-50">
-                  {lookupResult.full_name}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  {lookupResult.locality} · <RoleLabel role={lookupResult.role} />
-                </p>
+              <div className="flex items-start gap-4">
+                {lookupResult.photo_url && (
+                  <img
+                    src={lookupResult.photo_url}
+                    alt={`${lookupResult.full_name} photograph`}
+                    crossOrigin="anonymous"
+                    className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl object-cover border-2 border-emerald-500/40 shrink-0 bg-zinc-950"
+                  />
+                )}
+                <div>
+                  <span className="font-mono text-xs font-bold text-emerald-400">
+                    {lookupResult.registration_no}
+                  </span>
+                  <h2 className="mt-1 text-2xl font-bold text-zinc-50">
+                    {lookupResult.full_name}
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {lookupResult.locality} · <RoleLabel role={lookupResult.role} />
+                  </p>
+                </div>
               </div>
               <div className="text-right text-xs text-zinc-400">
                 <span>Submitted on</span>

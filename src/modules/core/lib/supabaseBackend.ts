@@ -26,6 +26,7 @@ export interface SupabaseBackend {
     from(bucket: string): {
       upload(path: string, body: Blob | File, options?: Record<string, unknown>): Result;
       createSignedUrl(path: string, expiresIn: number): Result<{ signedUrl: string } | null>;
+      getPublicUrl(path: string): { data: { publicUrl: string } };
     };
   };
   auth?: SupabaseAuth;

@@ -44,6 +44,10 @@ export function createFakeSupabase(options: FakeSupabaseOptions = {}) {
             calls.push({ kind: 'signed-url', name: bucket, payload: { path, expiresIn } });
             return { data: { signedUrl: `https://signed.example/${path}` }, error: null };
           },
+          getPublicUrl(path: string) {
+            calls.push({ kind: 'signed-url', name: bucket, payload: { path } });
+            return { data: { publicUrl: `https://signed.example/${path}` } };
+          },
         };
       },
     },

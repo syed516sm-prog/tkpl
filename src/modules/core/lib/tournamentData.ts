@@ -169,16 +169,35 @@ function mapPaymentRow(row: Record<string, unknown>, playerName = '', playerPhon
   };
 }
 
-function mapReceipt(value: unknown): ReceiptPayload | null {
+function mapReceipt(value: unknown, supabase?: SupabaseBackend): ReceiptPayload | null {
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
   if (!row.receipt_no) return null;
+
+  let photoUrl: string | null = null;
+  const rawPhoto = (row.photo_url || row.photo_path) as string | null | undefined;
+  if (rawPhoto && typeof rawPhoto === 'string') {
+    const trimmed = rawPhoto.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      photoUrl = trimmed;
+    } else if (supabase && typeof supabase.storage?.from === 'function') {
+      try {
+        const pub = supabase.storage.from('player-photos').getPublicUrl(trimmed);
+        if (pub?.data?.publicUrl) {
+          photoUrl = pub.data.publicUrl;
+        }
+      } catch {
+        photoUrl = trimmed;
+      }
+    }
+  }
+
   return {
     registration_no: String(row.registration_no ?? ''),
     full_name: String(row.full_name ?? ''),
     locality: String(row.locality ?? ''),
     role: playableRole(row.role),
-    photo_url: row.photo_url ? String(row.photo_url) : null,
+    photo_url: photoUrl,
     amount_paise: Number(row.amount_paise ?? 0),
     currency: String(row.currency ?? 'INR'),
     receipt_no: String(row.receipt_no),
@@ -447,11 +466,30 @@ export async function lookupStatus(
   if (!data || typeof data !== 'object') return null;
 
   const row = data as Record<string, unknown>;
+  let photoUrl: string | null = null;
+  const rawPhoto = (row.photo_url || row.photo_path) as string | null | undefined;
+  if (rawPhoto && typeof rawPhoto === 'string') {
+    const trimmed = rawPhoto.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      photoUrl = trimmed;
+    } else if (typeof supabase.storage?.from === 'function') {
+      try {
+        const pub = supabase.storage.from('player-photos').getPublicUrl(trimmed);
+        if (pub?.data?.publicUrl) {
+          photoUrl = pub.data.publicUrl;
+        }
+      } catch {
+        photoUrl = trimmed;
+      }
+    }
+  }
+
   return {
     registration_no: String(row.registration_no ?? ''),
     full_name: String(row.full_name ?? ''),
     locality: String(row.locality ?? ''),
     role: playableRole(row.role),
+    photo_url: photoUrl,
     registration_status:
       (row.registration_status as SafeStatusLookupResult['registration_status']) ?? 'submitted',
     auction_status:
@@ -474,13 +512,35 @@ export async function getReceipt(
   const cleanDob = dateOfBirth.trim();
   if (!cleanReg || !cleanPhone || !cleanDob) return null;
 
+  // 1. Try server endpoint first (resolves photo directly using service role)
+  try {
+    const res = await fetch('/api/razorpay/get-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        registration_no: cleanReg,
+        phone: cleanPhone,
+        date_of_birth: cleanDob,
+      }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.receipt) {
+        return mapReceipt(json.receipt, supabase);
+      }
+    }
+  } catch {
+    // API endpoint not reachable (e.g. offline dev or unit test); fall through
+  }
+
+  // 2. Direct Supabase RPC fallback
   const { data, error } = await supabase.rpc('get_receipt', {
     p_registration_no: cleanReg,
     p_phone: cleanPhone,
     p_date_of_birth: cleanDob,
   });
-  if (error) return null;
-  return mapReceipt(data);
+  if (error || !data) return null;
+  return mapReceipt(data, supabase);
 }
 
 export async function updatePlayerReview(

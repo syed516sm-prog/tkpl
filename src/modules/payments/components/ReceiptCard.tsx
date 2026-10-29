@@ -31,6 +31,8 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
   season,
   className = '',
 }) => {
+  const [photoError, setPhotoError] = React.useState(false);
+
   if (!isReceiptComplete(receipt)) {
     return (
       <div
@@ -88,11 +90,12 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
 
         <section className="mt-6 flex items-start gap-4 sm:gap-5">
           <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border-2 border-brand-lime/50 bg-brand-surface-2 sm:h-32 sm:w-32">
-            {receipt.photo_url ? (
+            {receipt.photo_url && !photoError ? (
               <img
                 src={receipt.photo_url}
                 alt={`${receipt.full_name} player photograph`}
                 crossOrigin="anonymous"
+                onError={() => setPhotoError(true)}
                 className="h-full w-full object-cover"
               />
             ) : (

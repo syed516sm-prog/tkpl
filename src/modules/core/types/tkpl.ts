@@ -175,6 +175,7 @@ export interface SafeStatusLookupResult {
   full_name: string;
   locality: string;
   role: PlayingRole;
+  photo_url?: string | null;
   registration_status: RegistrationStatus;
   auction_status: AuctionStatus;
   review_notes: string;

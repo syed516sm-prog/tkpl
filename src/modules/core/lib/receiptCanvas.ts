@@ -40,14 +40,19 @@ const DEFAULT_LOGO_CANDIDATES = [HEADER_WORDMARK];
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
-    if (typeof Image === 'undefined') {
+    if (typeof Image === 'undefined' || !src) {
       resolve(null);
       return;
     }
     const image = new Image();
     image.crossOrigin = 'anonymous';
     image.onload = () => resolve(image);
-    image.onerror = () => resolve(null);
+    image.onerror = () => {
+      const retry = new Image();
+      retry.onload = () => resolve(retry);
+      retry.onerror = () => resolve(null);
+      retry.src = src;
+    };
     image.src = src;
   });
 }
