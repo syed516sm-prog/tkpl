@@ -1,9 +1,9 @@
-import type { ApiRequest, ApiResponse } from '../_lib/http';
-import { headerValue } from '../_lib/http';
-import { readServerConfig, razorpayKeyMode } from '../_lib/config';
-import { fetchOrder, fetchOrderPayments, RazorpayRequestError } from '../_lib/razorpay';
-import { errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin';
-import { loadReceiptForRegistration } from '../_lib/receipt';
+import type { ApiRequest, ApiResponse } from '../_lib/http.js';
+import { headerValue } from '../_lib/http.js';
+import { readServerConfig, razorpayKeyMode } from '../_lib/config.js';
+import { fetchOrder, fetchOrderPayments, RazorpayRequestError } from '../_lib/razorpay.js';
+import { errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { loadReceiptForRegistration } from '../_lib/receipt.js';
 
 /**
  * GET /api/razorpay/reconcile   (Vercel Cron; requires CRON_SECRET)

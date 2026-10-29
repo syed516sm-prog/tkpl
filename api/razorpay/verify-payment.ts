@@ -1,13 +1,13 @@
-import type { ApiRequest, ApiResponse } from '../_lib/http';
-import { readServerConfig, razorpayKeyMode } from '../_lib/config';
+import type { ApiRequest, ApiResponse } from '../_lib/http.js';
+import { readServerConfig, razorpayKeyMode } from '../_lib/config.js';
 import {
   fetchOrder,
   fetchPayment,
   RazorpayRequestError,
   verifyRazorpaySignature,
-} from '../_lib/razorpay';
-import { errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin';
-import { loadReceiptForRegistration } from '../_lib/receipt';
+} from '../_lib/razorpay.js';
+import { errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin.js';
+import { loadReceiptForRegistration } from '../_lib/receipt.js';
 
 interface VerifyBody {
   razorpay_order_id?: unknown;

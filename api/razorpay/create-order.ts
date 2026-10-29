@@ -1,7 +1,7 @@
-import type { ApiRequest, ApiResponse } from '../_lib/http';
-import { readServerConfig } from '../_lib/config';
-import { createOrder, RazorpayRequestError } from '../_lib/razorpay';
-import { errorCode, errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin';
+import type { ApiRequest, ApiResponse } from '../_lib/http.js';
+import { readServerConfig } from '../_lib/config.js';
+import { createOrder, RazorpayRequestError } from '../_lib/razorpay.js';
+import { errorCode, errorMessage, supabaseAdmin } from '../_lib/supabaseAdmin.js';
 
 interface CreateOrderBody {
   registration_no?: unknown;

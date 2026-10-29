@@ -1,5 +1,5 @@
-import type { ApiRequest, ApiResponse } from '../_lib/http';
-import { readServerConfig } from '../_lib/config';
+import type { ApiRequest, ApiResponse } from '../_lib/http.js';
+import { readServerConfig } from '../_lib/config.js';
 
 /**
  * GET /api/razorpay/health
