@@ -62,7 +62,15 @@ export function readSupabaseConfig(env: SupabaseEnv): SupabaseConfig {
   return { configured, url: configured ? url : null, anonKey: configured ? anonKey : null };
 }
 
+let cachedBackend: SupabaseBackend | null = null;
+let cachedKey = '';
+
 export function createSupabaseBackend(url: string, anonKey: string): SupabaseBackend {
+  const cacheId = `${url}::${anonKey}`;
+  if (cachedBackend && cachedKey === cacheId) {
+    return cachedBackend;
+  }
+
   const client = createClient(url, anonKey, {
     auth: {
       persistSession: true,
@@ -70,10 +78,14 @@ export function createSupabaseBackend(url: string, anonKey: string): SupabaseBac
       detectSessionInUrl: true,
     },
   });
-  return {
+
+  cachedBackend = {
     rpc: client.rpc.bind(client),
     from: client.from.bind(client),
     storage: client.storage,
     auth: client.auth,
   } as unknown as SupabaseBackend;
+  cachedKey = cacheId;
+
+  return cachedBackend;
 }

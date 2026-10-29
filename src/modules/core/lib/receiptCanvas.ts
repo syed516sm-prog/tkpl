@@ -167,7 +167,7 @@ export async function drawReceiptCanvas(
   const W = RECEIPT_CANVAS_WIDTH;
   const H = RECEIPT_CANVAS_HEIGHT;
   const origin =
-    options.origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://tkpl.in');
+    options.origin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://www.tkpl.co.in');
   const verifyUrl = receiptVerifyUrl(receipt, origin);
 
   const [logo, photo] = await Promise.all([

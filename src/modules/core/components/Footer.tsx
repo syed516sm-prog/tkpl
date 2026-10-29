@@ -18,7 +18,7 @@ export const Footer: React.FC = () => {
 
   if (compact) {
     return (
-      <footer className={`${printHidden}border-t border-brand-line/80 bg-brand-ink px-4 py-6 text-brand-muted sm:px-6 lg:px-8`}>
+      <footer className={`${printHidden}border-t border-white/10 bg-brand-ink/80 backdrop-blur-md px-4 py-6 text-brand-muted sm:px-6 lg:px-8`}>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 text-xs sm:flex-row">
           <div className="flex items-center gap-2">
             <BrandMark size={24} />
@@ -31,7 +31,7 @@ export const Footer: React.FC = () => {
   }
 
   return (
-    <footer className={`${printHidden}border-t border-brand-line/80 bg-brand-ink px-4 py-12 text-brand-muted sm:px-6 lg:px-8`}>
+    <footer className={`${printHidden}border-t border-white/10 bg-transparent px-4 py-12 text-brand-muted sm:px-6 lg:px-8`}>
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-10 md:grid-cols-[1.2fr_0.8fr_1.4fr]">
           <div>

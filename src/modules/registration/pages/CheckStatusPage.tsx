@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   MagnifyingGlass,
@@ -33,7 +33,7 @@ export const CheckStatusPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const prefill = (location.state as PrefillLocationState | null) ?? null;
-  const { settings, lookupStatus, getReceipt, isCloudConnected } = useTournament();
+  const { settings, lookupStatus, findRegistrationByPhoneDob, getReceipt, isCloudConnected } = useTournament();
 
   const [registrationNo, setRegistrationNo] = useState(prefill?.prefillRegNo ?? '');
   const [phone, setPhone] = useState(prefill?.prefillPhone ?? '');
@@ -42,6 +42,32 @@ export const CheckStatusPage: React.FC = () => {
   const [lookupResult, setLookupResult] = useState<SafeStatusLookupResult | null>(null);
   const [lookupError, setLookupError] = useState<string>('');
   const [hasSearched, setHasSearched] = useState<boolean>(false);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+
+  // Recovery helper for forgotten registration numbers
+  const [showForgotModal, setShowForgotModal] = useState<boolean>(false);
+  const [recoveryPhone, setRecoveryPhone] = useState<string>('');
+  const [recoveryDob, setRecoveryDob] = useState<string>('');
+  const [recoveryLoading, setRecoveryLoading] = useState<boolean>(false);
+  const [recoveryResult, setRecoveryResult] = useState<{ registration_no: string; full_name: string } | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string>('');
+
+  // Auto-fill from local pending registration if player just registered and visited this page
+  useEffect(() => {
+    if (!prefill && !registrationNo) {
+      try {
+        const raw = localStorage.getItem('tkpl_pending_registration');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.registration_no) setRegistrationNo(parsed.registration_no);
+          if (parsed.phone) setPhone(parsed.phone);
+          if (parsed.date_of_birth) setDateOfBirth(parsed.date_of_birth);
+        }
+      } catch {
+        // Storage unavailable or disabled
+      }
+    }
+  }, [prefill, registrationNo]);
 
   // Online payment + receipt actions
   const [isPaying, setIsPaying] = useState(false);
@@ -66,17 +92,22 @@ export const CheckStatusPage: React.FC = () => {
       return;
     }
 
-    const res = await lookupStatus(registrationNo, phone, dateOfBirth);
-    if (!res) {
-      setLookupResult(null);
-      // Anti-enumeration message: never reveal whether the phone number alone exists
-      setLookupError(
-        'No matching registration found for the provided combination of Registration Number, Mobile Number and Date of Birth.'
-      );
-      return;
-    }
+    setIsSearching(true);
+    try {
+      const res = await lookupStatus(registrationNo, phone, dateOfBirth);
+      if (!res) {
+        setLookupResult(null);
+        // Anti-enumeration message: never reveal whether the phone number alone exists
+        setLookupError(
+          'No matching registration found for the provided combination of Registration Number, Mobile Number and Date of Birth.'
+        );
+        return;
+      }
 
-    setLookupResult(res);
+      setLookupResult(res);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleCompletePayment = async () => {
@@ -142,6 +173,34 @@ export const CheckStatusPage: React.FC = () => {
     setPayFeedback(null);
   };
 
+  const handleRecoverRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecoveryError('');
+    setRecoveryResult(null);
+
+    if (!recoveryPhone.trim() || !recoveryDob.trim()) {
+      setRecoveryError('Please enter both your mobile number and date of birth.');
+      return;
+    }
+
+    setRecoveryLoading(true);
+    try {
+      const res = await findRegistrationByPhoneDob(recoveryPhone, recoveryDob);
+      if (!res) {
+        setRecoveryError('No registration found matching this mobile number and date of birth.');
+        return;
+      }
+      setRecoveryResult(res);
+      setRegistrationNo(res.registration_no);
+      setPhone(recoveryPhone);
+      setDateOfBirth(recoveryDob);
+    } catch {
+      setRecoveryError('Could not recover registration number right now. Please retry.');
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-zinc-950 py-10 sm:py-14">
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
@@ -192,12 +251,86 @@ export const CheckStatusPage: React.FC = () => {
             </div>
           )}
 
+          {/* Forgot Registration Number Helper */}
+          {showForgotModal && (
+            <div className="mt-5 rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-sm text-zinc-200">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                <MagnifyingGlass size={18} weight="bold" />
+                <span>Recover Your Registration Number</span>
+              </div>
+              <p className="mt-1 text-xs text-zinc-400">
+                Enter the mobile number and date of birth you registered with, and we will find your Registration Number.
+              </p>
+
+              <form onSubmit={handleRecoverRegistration} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <input
+                  type="tel"
+                  required
+                  placeholder="Registered Mobile"
+                  value={recoveryPhone}
+                  onChange={(e) => setRecoveryPhone(e.target.value)}
+                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:border-emerald-500 focus:outline-none"
+                />
+                <input
+                  type="date"
+                  required
+                  value={recoveryDob}
+                  onChange={(e) => setRecoveryDob(e.target.value)}
+                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={recoveryLoading}
+                  className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-bold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50 transition"
+                >
+                  {recoveryLoading ? 'Searching...' : 'Find My Number'}
+                </button>
+              </form>
+
+              {recoveryError && (
+                <p className="mt-2 text-xs text-rose-400 font-medium">{recoveryError}</p>
+              )}
+
+              {recoveryResult && (
+                <div className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-950/50 p-3 text-xs text-emerald-200 flex flex-wrap items-center justify-between gap-2">
+                  <span>
+                    Found registration for <strong>{recoveryResult.full_name}</strong>:{' '}
+                    <code className="font-mono font-bold text-white bg-black/40 px-1.5 py-0.5 rounded">
+                      {recoveryResult.registration_no}
+                    </code>{' '}
+                    (Auto-filled below)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="text-emerald-300 underline font-semibold hover:text-white"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleLookup} noValidate className="mt-6 space-y-5">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="flex flex-col gap-2">
-                <label htmlFor="lookup_reg_no" className="text-sm font-semibold text-zinc-200">
-                  Registration Number <span className="text-rose-400">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="lookup_reg_no" className="text-sm font-semibold text-zinc-200">
+                    Registration Number <span className="text-rose-400">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowForgotModal((prev) => !prev);
+                      setRecoveryError('');
+                      setRecoveryResult(null);
+                    }}
+                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 underline"
+                  >
+                    {showForgotModal ? 'Close helper' : 'Forgot ID?'}
+                  </button>
+                </div>
                 <input
                   id="lookup_reg_no"
                   type="text"
@@ -242,10 +375,39 @@ export const CheckStatusPage: React.FC = () => {
 
             <button
               type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-zinc-950 transition hover:bg-emerald-400 active:scale-[0.98]"
+              disabled={isSearching}
+              className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-zinc-950 shadow-md transition-all hover:bg-emerald-400 active:scale-[0.98] disabled:cursor-wait disabled:opacity-75"
             >
-              <Ticket size={18} weight="bold" />
-              <span>Find My Ticket & Registration</span>
+              {isSearching ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 text-zinc-950"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                    />
+                    <path
+                      className="opacity-90"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  <span>Searching Ticket...</span>
+                </>
+              ) : (
+                <>
+                  <Ticket size={18} weight="bold" />
+                  <span>Find My Ticket & Registration</span>
+                </>
+              )}
             </button>
           </form>
         </div>

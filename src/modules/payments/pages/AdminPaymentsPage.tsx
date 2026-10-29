@@ -37,6 +37,7 @@ export const AdminPaymentsPage: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  const [isSaving, setIsSaving] = useState(false);
 
   const canVerifyPayment = canRolePerform(adminSession?.role, 'verify_payment');
   const canExport = canRolePerform(adminSession?.role, 'export_csv');
@@ -75,6 +76,7 @@ export const AdminPaymentsPage: React.FC = () => {
     e.preventDefault();
     if (!editingPayment) return;
     setFeedback(null);
+    setIsSaving(true);
 
     try {
       await updatePaymentVerification({
@@ -95,6 +97,8 @@ export const AdminPaymentsPage: React.FC = () => {
         type: 'error',
         message: err instanceof Error ? err.message : 'Could not update payment status.',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -381,10 +385,39 @@ export const AdminPaymentsPage: React.FC = () => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98]"
+              disabled={isSaving}
+              className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition-all hover:bg-emerald-400 active:scale-[0.98] disabled:cursor-wait disabled:opacity-75"
             >
-              <CheckCircle size={18} weight="bold" />
-              <span>Confirm Payment Status</span>
+              {isSaving ? (
+                <>
+                  <svg
+                    className="animate-spin h-4 w-4 text-zinc-950"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                    />
+                    <path
+                      className="opacity-90"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  <span>Updating Status...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={18} weight="bold" />
+                  <span>Confirm Payment Status</span>
+                </>
+              )}
             </button>
           </div>
         </form>

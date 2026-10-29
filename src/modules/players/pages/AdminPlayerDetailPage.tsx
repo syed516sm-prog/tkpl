@@ -31,6 +31,8 @@ export const AdminPlayerDetailPage: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   if (!player) {
     return <Navigate to="/admin/players" replace />;
@@ -39,25 +41,31 @@ export const AdminPlayerDetailPage: React.FC = () => {
   const canReview = canRolePerform(adminSession?.role, 'review_player');
   const isPaymentVerified = payment?.status === 'verified';
 
-  const handleSaveReview = (e: React.FormEvent) => {
+  const handleSaveReview = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
+    setIsSaved(false);
+    setIsSaving(true);
     try {
-      updatePlayerReview({
+      await updatePlayerReview({
         playerId: player.id,
         registrationStatus: regStatus,
         auctionStatus: regStatus === 'approved' ? 'eligible' : 'not_reviewed',
         reviewNotes,
       });
+      setIsSaved(true);
       setFeedback({
         type: 'success',
         message: 'Player review decision saved and recorded in the organizer audit log.',
       });
+      setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
       setFeedback({
         type: 'error',
         message: err instanceof Error ? err.message : 'Unable to update player status.',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -262,10 +270,50 @@ export const AdminPlayerDetailPage: React.FC = () => {
 
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98]"
+                  disabled={isSaving}
+                  className={`inline-flex items-center gap-2.5 rounded-xl px-6 py-3 text-sm font-bold shadow-lg transition-all duration-300 active:scale-[0.98] disabled:cursor-wait ${
+                    isSaved
+                      ? 'bg-emerald-400 text-zinc-950 ring-2 ring-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.5)]'
+                      : isSaving
+                      ? 'bg-emerald-600 text-zinc-950 opacity-90'
+                      : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+                  }`}
                 >
-                  <CheckCircle size={18} weight="bold" />
-                  <span>Save Review Decision</span>
+                  {isSaving ? (
+                    <>
+                      <svg
+                        className="animate-spin h-4 w-4 text-zinc-950"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                        />
+                        <path
+                          className="opacity-90"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                        />
+                      </svg>
+                      <span>Saving Decision...</span>
+                    </>
+                  ) : isSaved ? (
+                    <>
+                      <CheckCircle size={18} weight="fill" className="text-zinc-950 animate-bounce" />
+                      <span>Decision Saved!</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle size={18} weight="bold" />
+                      <span>Save Review Decision</span>
+                    </>
+                  )}
                 </button>
               </form>
             )}

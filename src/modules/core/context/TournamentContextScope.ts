@@ -14,9 +14,9 @@ import type {
   SafeStatusLookupResult,
   TournamentSettings,
 } from '../types/tkpl';
-import type { RegistrationSubmitResponse } from '../lib/tournamentData';
+import type { PublicTournamentStats, RegistrationSubmitResponse } from '../lib/tournamentData';
 
-export type { RegistrationSubmitResponse };
+export type { PublicTournamentStats, RegistrationSubmitResponse };
 
 export interface TournamentContextValue {
   settings: TournamentSettings;
@@ -24,7 +24,9 @@ export interface TournamentContextValue {
   payments: PaymentRecord[];
   auditLogs: AuditLogEntry[];
   adminSession: AdminSession | null;
+  publicStats: PublicTournamentStats | null;
   isCloudConnected: boolean;
+  refreshPublicStats: () => Promise<void>;
   loginAdmin: (roleOrName?: string, customName?: string) => void;
   loginAdminWithPassword: (email: string, password: string) => Promise<void>;
   logoutAdmin: () => Promise<void> | void;
@@ -37,6 +39,10 @@ export interface TournamentContextValue {
     phone: string,
     dateOfBirth: string
   ) => Promise<SafeStatusLookupResult | null>;
+  findRegistrationByPhoneDob: (
+    phone: string,
+    dateOfBirth: string
+  ) => Promise<{ registration_no: string; full_name: string } | null>;
   getReceipt: (
     registrationNo: string,
     phone: string,

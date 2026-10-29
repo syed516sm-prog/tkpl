@@ -94,7 +94,7 @@ Without `vercel dev`, the website still works (registration + status + admin), b
 1. Create a free account and project at **[supabase.com](https://supabase.com)**.
 2. In **Authentication → Users**, click **"Add user" → "Create user"** with email `syed516.sm@gmail.com`, enter your chosen password, and check "Auto Confirm User".
 3. Open **SQL Editor** and run the all-in-one script [`supabase/setup_all.sql`](file:///c:/Users/liter/Desktop/TKPL/supabase/setup_all.sql). This creates all 8 tables, storage bucket, security policies, and configures `syed516.sm@gmail.com` as Tournament Admin.
-   *(Note: If you already set up Supabase previously, simply run [`supabase/migrations/0004_fix_receipt_photo_url.sql`](file:///c:/Users/liter/Desktop/TKPL/supabase/migrations/0004_fix_receipt_photo_url.sql) in SQL Editor to update the photo URL permissions and receipt generator).*
+   *(Note: If you already set up Supabase previously, run [`supabase/migrations/0004_fix_receipt_photo_url.sql`](file:///c:/Users/liter/Desktop/TKPL/supabase/migrations/0004_fix_receipt_photo_url.sql) and [`supabase/migrations/0005_public_stats_confirmed_count.sql`](file:///c:/Users/liter/Desktop/TKPL/supabase/migrations/0005_public_stats_confirmed_count.sql) in SQL Editor to update photo permissions and the public live player counter).*
 4. Under **Project Settings → API**, copy the **Project URL**, the **anon public key**, and the **service_role key** (keep this one secret).
 
 ### Razorpay (online payments)

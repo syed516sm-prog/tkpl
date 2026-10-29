@@ -4,6 +4,7 @@ import { TournamentProvider } from './modules/core/context/TournamentContext';
 import { Navbar } from './modules/core/components/Navbar';
 import { Footer } from './modules/core/components/Footer';
 import { ScrollToTop } from './modules/core/components/ScrollToTop';
+import { StadiumBackground } from './modules/core/components/StadiumBackground';
 import { HomePage } from './modules/registration/pages/HomePage';
 import { RegisterPage } from './modules/registration/pages/RegisterPage';
 import { ReceiptPage } from './modules/registration/pages/ReceiptPage';
@@ -21,7 +22,8 @@ export const App: React.FC = () => {
   return (
     <TournamentProvider>
       <BrowserRouter>
-        <div className="flex min-h-[100dvh] flex-col bg-zinc-950 text-zinc-100">
+        <div className="relative flex min-h-[100dvh] flex-col overflow-x-hidden text-zinc-100">
+          <StadiumBackground />
           <ScrollToTop />
           <Navbar />
           <main className="flex-1">

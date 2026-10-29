@@ -23,6 +23,17 @@ import { buildPayPrompt, fetchPaymentGatewayHealth } from '../../core/lib/paymen
 import { runRegistrationPayment } from '../../core/lib/checkout';
 import type { RegistrationSubmitResponse } from '../../core/context/TournamentContext';
 
+const PENDING_STORAGE_KEY = 'tkpl_pending_registration';
+
+interface PendingRegistrationSession {
+  player_id?: string;
+  registration_no: string;
+  full_name: string;
+  phone: string;
+  date_of_birth: string;
+  created_at?: string;
+}
+
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { settings, submitRegistration } = useTournament();
@@ -64,6 +75,31 @@ export const RegisterPage: React.FC = () => {
     fetchPaymentGatewayHealth().then((health) => {
       if (!cancelled) setGatewayAvailable(health.configured);
     });
+
+    // Recover pending registration on page reload/revisit so the player is never locked out
+    try {
+      const raw = localStorage.getItem(PENDING_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as PendingRegistrationSession;
+        if (parsed.registration_no && parsed.phone && parsed.date_of_birth) {
+          setSavedRegistration({
+            player_id: parsed.player_id || '',
+            registration_no: parsed.registration_no,
+            full_name: parsed.full_name || '',
+            payment_status: 'pending',
+            created_at: parsed.created_at || new Date().toISOString(),
+          });
+          setForm((prev) => ({
+            ...prev,
+            phone: parsed.phone,
+            date_of_birth: parsed.date_of_birth,
+          }));
+        }
+      }
+    } catch {
+      // Storage unavailable or disabled
+    }
+
     return () => {
       cancelled = true;
     };
@@ -122,6 +158,21 @@ export const RegisterPage: React.FC = () => {
       const result = await submitRegistration(form, idempotencyKey);
       // Stay on this page: the pay step opens next, under the saved form.
       setSavedRegistration(result);
+      try {
+        localStorage.setItem(
+          PENDING_STORAGE_KEY,
+          JSON.stringify({
+            player_id: result.player_id,
+            registration_no: result.registration_no,
+            full_name: result.full_name,
+            phone: form.phone,
+            date_of_birth: form.date_of_birth,
+            created_at: result.created_at,
+          })
+        );
+      } catch {
+        // Storage unavailable or disabled
+      }
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       const message =
@@ -146,6 +197,11 @@ export const RegisterPage: React.FC = () => {
         full_name: savedRegistration.full_name,
       });
       if (result.type === 'success') {
+        try {
+          localStorage.removeItem(PENDING_STORAGE_KEY);
+        } catch {
+          // Ignore
+        }
         navigate('/receipt', {
           state: {
             receipt: result.receipt,
@@ -163,6 +219,16 @@ export const RegisterPage: React.FC = () => {
     } finally {
       setIsPaying(false);
     }
+  };
+
+  const handleClearPending = () => {
+    try {
+      localStorage.removeItem(PENDING_STORAGE_KEY);
+    } catch {
+      // Ignore
+    }
+    setSavedRegistration(null);
+    setPayError('');
   };
 
   const handleCopyRegNo = async () => {
@@ -278,6 +344,17 @@ export const RegisterPage: React.FC = () => {
               with your Registration Number, Mobile Number and Date of Birth to complete the payment
               later.
             </p>
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-brand-lime/20 pt-4 text-xs">
+              <span className="text-brand-muted">Need to register another player or start fresh?</span>
+              <button
+                type="button"
+                onClick={handleClearPending}
+                className="font-semibold text-brand-lime underline hover:text-white transition"
+              >
+                Register a different player &rarr;
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -716,14 +793,38 @@ export const RegisterPage: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting || isRegistrationBlocked}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-7 py-3.5 text-sm sm:text-base font-bold text-zinc-950 shadow-lg transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-emerald-500 px-7 py-3.5 text-sm sm:text-base font-bold text-zinc-950 shadow-lg transition-all hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
             >
-              <CheckCircle size={20} weight="bold" />
-              <span>
-                {isSubmitting
-                  ? 'Saving Details...'
-                  : `Save Details & Pay ${feeLabel}`}
-              </span>
+              {isSubmitting ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-zinc-950"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="3.5"
+                    />
+                    <path
+                      className="opacity-90"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    />
+                  </svg>
+                  <span>Saving Player Profile...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={20} weight="bold" />
+                  <span>Save Details &amp; Pay {feeLabel}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

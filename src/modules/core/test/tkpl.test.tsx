@@ -116,13 +116,15 @@ describe('TKPL Validation, Security & Operational Workflow Suite', () => {
     expect(response?.registration_no).toBe('TKPL-2026-0106');
     expect(response?.payment_status).toBe('pending');
 
-    // (The provider also reads the public settings row on mount.)
+    // (The provider also reads the public settings and public stats on mount.)
     const kinds = fake.calls
-      .filter((call) => call.kind === 'upload' || call.kind === 'rpc')
+      .filter((call) => call.kind === 'upload' || (call.kind === 'rpc' && call.name !== 'get_public_stats'))
       .map((call) => `${call.kind}:${call.name}`);
     expect(kinds).toEqual(['upload:player-photos', 'rpc:submit_player_registration']);
 
-    const networkCalls = fake.calls.filter((call) => call.kind === 'upload' || call.kind === 'rpc');
+    const networkCalls = fake.calls.filter(
+      (call) => call.kind === 'upload' || (call.kind === 'rpc' && call.name !== 'get_public_stats')
+    );
     const upload = networkCalls[0];
     expect(String(upload.payload.path)).toMatch(/^registrations\/[^/]+\.jpg$/);
     expect(upload.payload.contentType).toBe('image/jpeg');
@@ -140,7 +142,7 @@ describe('TKPL Validation, Security & Operational Workflow Suite', () => {
       expect(retry.registration_no).toBe('TKPL-2026-0106');
     });
     expect(
-      fake.calls.filter((call) => call.kind === 'upload' || call.kind === 'rpc')
+      fake.calls.filter((call) => call.kind === 'upload' || (call.kind === 'rpc' && call.name !== 'get_public_stats'))
     ).toHaveLength(2);
   });
 
@@ -406,5 +408,41 @@ describe('TKPL Validation, Security & Operational Workflow Suite', () => {
     await expect(
       unauthResult.current.loginAdminWithPassword('intruder@example.com', 'wrongpass')
     ).rejects.toThrow(/not listed or active as an authorized TKPL organizer/i);
+  });
+
+  it('12. Dynamically loads public tournament stats for public visitors in cloud mode', async () => {
+    const { client: statsSupabase } = createFakeSupabase({
+      rpc: (fn) => {
+        if (fn === 'get_public_stats') {
+          return {
+            data: {
+              registered_count: 8,
+              confirmed_count: 3,
+              auction_eligible_count: 3,
+            },
+            error: null,
+          };
+        }
+        return { data: null, error: null };
+      },
+    });
+
+    const statsWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+      <TournamentProvider supabase={statsSupabase} isCloudMode={true}>
+        {children}
+      </TournamentProvider>
+    );
+
+    const { result } = renderHook(() => useTournament(), { wrapper: statsWrapper });
+
+    await act(async () => {
+      await result.current.refreshPublicStats();
+    });
+
+    expect(result.current.publicStats).toEqual({
+      registered_count: 8,
+      confirmed_count: 3,
+      auction_eligible_count: 3,
+    });
   });
 });

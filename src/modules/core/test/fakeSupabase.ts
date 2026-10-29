@@ -25,8 +25,20 @@ export function createFakeSupabase(options: FakeSupabaseOptions = {}) {
   const client: SupabaseBackend = {
     async rpc(fn, args) {
       calls.push({ kind: 'rpc', name: fn, payload: { ...(args ?? {}) } });
-      const result = options.rpc?.(fn, args ?? {}) ?? { data: null, error: null };
-      return result;
+      if (options.rpc) {
+        return options.rpc(fn, args ?? {});
+      }
+      if (fn === 'get_public_stats') {
+        return {
+          data: {
+            registered_count: 5,
+            confirmed_count: 5,
+            auction_eligible_count: 5,
+          },
+          error: null,
+        };
+      }
+      return { data: null, error: null };
     },
     storage: {
       from(bucket: string) {

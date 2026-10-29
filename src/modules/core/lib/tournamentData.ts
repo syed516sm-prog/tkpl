@@ -236,6 +236,61 @@ export async function fetchTournamentSettings(
   };
 }
 
+export interface PublicTournamentStats {
+  registered_count: number;
+  confirmed_count: number;
+  auction_eligible_count: number;
+}
+
+export async function fetchPublicStats(
+  supabase?: SupabaseBackend | null
+): Promise<PublicTournamentStats | null> {
+  // 1. First try direct Supabase RPC (fast, directly reaches cloud, avoids proxy on localhost)
+  if (supabase && typeof supabase.rpc === 'function') {
+    try {
+      const { data, error } = await supabase.rpc('get_public_stats');
+      if (!error && data && typeof data === 'object') {
+        const row = data as Record<string, unknown>;
+        const registered = Number(row.registered_count ?? 0);
+        const confirmed = Number(row.confirmed_count ?? row.auction_eligible_count ?? registered);
+        const eligible = Number(row.auction_eligible_count ?? confirmed);
+        return {
+          registered_count: registered,
+          confirmed_count: confirmed,
+          auction_eligible_count: eligible,
+        };
+      }
+    } catch {
+      // Fall through to serverless endpoint
+    }
+  }
+
+  // 2. Fallback: try serverless endpoint
+  try {
+    const res = await fetch('/api/public-stats', {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const payload = await res.json();
+      if (payload && typeof payload === 'object') {
+        const registered = Number(payload.registered_count ?? 0);
+        const confirmed = Number(payload.confirmed_count ?? payload.auction_eligible_count ?? registered);
+        const eligible = Number(payload.auction_eligible_count ?? confirmed);
+        return {
+          registered_count: registered,
+          confirmed_count: confirmed,
+          auction_eligible_count: eligible,
+        };
+      }
+    }
+  } catch {
+    // Ignore server error (e.g. offline dev without vercel dev)
+  }
+
+  return null;
+}
+
 export interface AdminDataBundle {
   players: PlayerRecord[];
   payments: PaymentRecord[];
@@ -499,6 +554,32 @@ export async function lookupStatus(
     transaction_ref: String(row.transaction_ref ?? ''),
     submitted_at: String(row.submitted_at ?? ''),
   };
+}
+
+export async function findRegistrationByPhoneDob(
+  supabase: SupabaseBackend,
+  phone: string,
+  dateOfBirth: string
+): Promise<{ registration_no: string; full_name: string } | null> {
+  const cleanPhone = normalizeIndianPhone(phone);
+  const cleanDob = dateOfBirth.trim();
+  if (!cleanPhone || !cleanDob) return null;
+
+  try {
+    const { data, error } = await supabase.rpc('find_registration_by_phone_dob', {
+      p_phone: cleanPhone,
+      p_date_of_birth: cleanDob,
+    });
+    if (error || !data || typeof data !== 'object') return null;
+    const row = data as Record<string, unknown>;
+    if (!row.registration_no) return null;
+    return {
+      registration_no: String(row.registration_no),
+      full_name: String(row.full_name ?? ''),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getReceipt(

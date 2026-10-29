@@ -47,7 +47,7 @@ export const ReceiptCard: React.FC<ReceiptCardProps> = ({
 
   const verifyUrl = receiptVerifyUrl(
     receipt,
-    typeof window !== 'undefined' ? window.location.origin : 'https://tkpl.in'
+    typeof window !== 'undefined' ? window.location.origin : 'https://www.tkpl.co.in'
   );
   const paidOn = receiptDate(receipt.paid_at, receipt.submitted_at);
 

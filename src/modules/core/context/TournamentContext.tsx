@@ -27,11 +27,11 @@ import {
 } from '../lib/validation';
 import { createSupabaseBackend, readSupabaseConfig, type SupabaseBackend } from '../lib/supabaseBackend';
 import * as data from '../lib/tournamentData';
-import type { RegistrationSubmitResponse } from '../lib/tournamentData';
+import type { PublicTournamentStats, RegistrationSubmitResponse } from '../lib/tournamentData';
 import { TournamentContext, useTournament, type TournamentContextValue } from './TournamentContextScope';
 
 export { useTournament };
-export type { RegistrationSubmitResponse, TournamentContextValue };
+export type { PublicTournamentStats, RegistrationSubmitResponse, TournamentContextValue };
 
 const STORAGE_KEYS = {
   SETTINGS: 'tkpl_v3_settings',
@@ -150,6 +150,33 @@ export const TournamentProvider: React.FC<TournamentProviderProps> = ({
   const [processedKeys, setProcessedKeys] = useState<Record<string, RegistrationSubmitResponse>>(
     () => loadFromStorage(STORAGE_KEYS.IDEMPOTENCY, {})
   );
+  const [publicStats, setPublicStats] = useState<data.PublicTournamentStats | null>(() => {
+    if (!cloud) {
+      const verified = INITIAL_PAYMENTS.filter((p) => p.status === 'verified').length;
+      return {
+        registered_count: INITIAL_PLAYERS.length,
+        confirmed_count: verified,
+        auction_eligible_count: INITIAL_PLAYERS.filter((p) => p.auction_status === 'eligible').length,
+      };
+    }
+    return null;
+  });
+
+  const refreshPublicStats = useCallback(async () => {
+    if (!cloud) {
+      const verified = payments.filter((p) => p.status === 'verified').length;
+      setPublicStats({
+        registered_count: players.length,
+        confirmed_count: verified,
+        auction_eligible_count: players.filter((p) => p.auction_status === 'eligible').length,
+      });
+      return;
+    }
+    const stats = await data.fetchPublicStats(client);
+    if (stats) {
+      setPublicStats(stats);
+    }
+  }, [client, cloud, payments, players]);
 
   useEffect(() => {
     if (cloud) return;
@@ -189,7 +216,37 @@ export const TournamentProvider: React.FC<TournamentProviderProps> = ({
     setPlayers(bundle.players);
     setPayments(bundle.payments);
     setAuditLogs(bundle.auditLogs);
+    void data.fetchPublicStats(client).then((stats) => {
+      if (stats) setPublicStats(stats);
+    });
   }, [client]);
+
+  // Public stats (counts for landing page)
+  useEffect(() => {
+    let cancelled = false;
+    void data.fetchPublicStats(client).then((stats) => {
+      if (!cancelled && stats) setPublicStats(stats);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [client]);
+
+  // Periodically refresh public stats and when window receives focus
+  useEffect(() => {
+    if (!cloud) return;
+    const handleSync = () => {
+      void data.fetchPublicStats(client).then((stats) => {
+        if (stats) setPublicStats(stats);
+      });
+    };
+    window.addEventListener('focus', handleSync);
+    const interval = setInterval(handleSync, 30_000);
+    return () => {
+      window.removeEventListener('focus', handleSync);
+      clearInterval(interval);
+    };
+  }, [client, cloud]);
 
   // Public settings come from the one row everyone may read.
   useEffect(() => {
@@ -454,6 +511,31 @@ export const TournamentProvider: React.FC<TournamentProviderProps> = ({
       };
     },
     [client, cloud, payments, players]
+  );
+
+  const findRegistrationByPhoneDob = useCallback(
+    async (
+      phone: string,
+      dateOfBirth: string
+    ): Promise<{ registration_no: string; full_name: string } | null> => {
+      if (cloud && client) {
+        return data.findRegistrationByPhoneDob(client, phone, dateOfBirth);
+      }
+
+      const cleanPhone = normalizeIndianPhone(phone);
+      const cleanDob = dateOfBirth.trim();
+      if (!cleanPhone || !cleanDob) return null;
+
+      const matchedPlayer = players.find(
+        (p) => normalizeIndianPhone(p.phone) === cleanPhone && p.date_of_birth === cleanDob
+      );
+      if (!matchedPlayer) return null;
+      return {
+        registration_no: matchedPlayer.registration_no,
+        full_name: matchedPlayer.full_name,
+      };
+    },
+    [client, cloud, players]
   );
 
   const getReceipt = useCallback(
@@ -753,6 +835,12 @@ export const TournamentProvider: React.FC<TournamentProviderProps> = ({
     setAuditLogs(INITIAL_AUDIT_LOGS);
     setSeqCounter(106);
     setProcessedKeys({});
+    const verified = INITIAL_PAYMENTS.filter((p) => p.status === 'verified').length;
+    setPublicStats({
+      registered_count: INITIAL_PLAYERS.length,
+      confirmed_count: verified,
+      auction_eligible_count: INITIAL_PLAYERS.filter((p) => p.auction_status === 'eligible').length,
+    });
   }, [cloud]);
 
   return (
@@ -763,12 +851,15 @@ export const TournamentProvider: React.FC<TournamentProviderProps> = ({
         payments,
         auditLogs,
         adminSession,
+        publicStats,
         isCloudConnected: cloud,
+        refreshPublicStats,
         loginAdmin,
         loginAdminWithPassword,
         logoutAdmin,
         submitRegistration,
         lookupStatus,
+        findRegistrationByPhoneDob,
         getReceipt,
         updatePlayerReview,
         updatePaymentVerification,

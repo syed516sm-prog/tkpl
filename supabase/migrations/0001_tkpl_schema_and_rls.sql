@@ -676,6 +676,7 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'registered_count', (select count(*) from public.players),
+    'confirmed_count', (select count(*) from public.payments where status = 'verified'),
     'auction_eligible_count', (select count(*) from public.players where auction_status = 'eligible')
   );
 $$;

@@ -676,6 +676,7 @@ set search_path = public
 as $$
   select jsonb_build_object(
     'registered_count', (select count(*) from public.players),
+    'confirmed_count', (select count(*) from public.payments where status = 'verified'),
     'auction_eligible_count', (select count(*) from public.players where auction_status = 'eligible')
   );
 $$;
@@ -1362,3 +1363,65 @@ on conflict (user_id) do update set
 -- Verification check: run this to confirm your admin account is registered properly
 select user_id, email, full_name, role, active, created_at 
 from public.admin_users;
+
+
+-- ============================================================================
+-- 0005: Dynamic counts for public website landing page
+-- ============================================================================
+create or replace function public.get_public_stats()
+returns jsonb
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'registered_count', (select count(*) from public.players),
+    'confirmed_count', (select count(*) from public.payments where status = 'verified'),
+    'auction_eligible_count', (select count(*) from public.players where auction_status = 'eligible')
+  );
+$$;
+
+revoke all on function public.get_public_stats() from public;
+grant execute on function public.get_public_stats() to anon, authenticated;
+
+-- ============================================================================
+-- 0006: Helper RPC to recover registration number by phone and date of birth
+-- ============================================================================
+create or replace function public.find_registration_by_phone_dob(
+  p_phone text,
+  p_date_of_birth date
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_player public.players%rowtype;
+  v_phone text := regexp_replace(coalesce(p_phone, ''), '\D', '', 'g');
+begin
+  if length(v_phone) = 12 and left(v_phone, 2) = '91' then
+    v_phone := right(v_phone, 10);
+  end if;
+
+  select * into v_player
+  from public.players
+  where phone = v_phone
+    and date_of_birth = p_date_of_birth
+  order by created_at desc
+  limit 1;
+
+  if not found then
+    return null;
+  end if;
+
+  return jsonb_build_object(
+    'registration_no', v_player.registration_no,
+    'full_name', v_player.full_name
+  );
+end;
+$$;
+
+revoke all on function public.find_registration_by_phone_dob(text, date) from public;
+grant execute on function public.find_registration_by_phone_dob(text, date) to anon, authenticated;

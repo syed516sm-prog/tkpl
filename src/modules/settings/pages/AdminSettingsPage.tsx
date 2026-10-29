@@ -35,6 +35,8 @@ export const AdminSettingsPage: React.FC = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [gateway, setGateway] = useState<GatewayHealth | null>(null);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export const AdminSettingsPage: React.FC = () => {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback(null);
+    setIsSaved(false);
 
     const parsedFeeRupees = Number(feeRupees);
     if (Number.isNaN(parsedFeeRupees) || parsedFeeRupees < 0) {
@@ -57,6 +60,7 @@ export const AdminSettingsPage: React.FC = () => {
       return;
     }
 
+    setIsSaving(true);
     try {
       await updateTournamentSettings({
         tournament_name: tournamentName.trim(),
@@ -74,15 +78,19 @@ export const AdminSettingsPage: React.FC = () => {
         privacy_notice: privacyNotice.trim(),
         contact_text: contactText.trim(),
       });
+      setIsSaved(true);
       setFeedback({
         type: 'success',
         message: 'Tournament settings updated across all public pages and recorded in the audit log.',
       });
+      setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
       setFeedback({
         type: 'error',
         message: err instanceof Error ? err.message : 'Unable to save settings.',
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -342,10 +350,50 @@ export const AdminSettingsPage: React.FC = () => {
 
           <button
             type="submit"
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-6 py-3 text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98]"
+            disabled={isSaving}
+            className={`inline-flex items-center gap-2.5 rounded-xl px-6 py-3 text-sm font-bold shadow-lg transition-all duration-300 active:scale-[0.98] disabled:cursor-wait ${
+              isSaved
+                ? 'bg-emerald-400 text-zinc-950 ring-2 ring-emerald-300 shadow-[0_0_24px_rgba(52,211,153,0.5)]'
+                : isSaving
+                ? 'bg-emerald-600 text-zinc-950 opacity-90'
+                : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)]'
+            }`}
           >
-            <GearSix size={18} weight="bold" />
-            <span>Save Tournament Settings</span>
+            {isSaving ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 text-zinc-950"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                  />
+                  <path
+                    className="opacity-90"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                  />
+                </svg>
+                <span>Saving Settings...</span>
+              </>
+            ) : isSaved ? (
+              <>
+                <CheckCircle size={18} weight="fill" className="text-zinc-950 animate-bounce" />
+                <span>Settings Saved!</span>
+              </>
+            ) : (
+              <>
+                <GearSix size={18} weight="bold" />
+                <span>Save Tournament Settings</span>
+              </>
+            )}
           </button>
         </form>
       )}

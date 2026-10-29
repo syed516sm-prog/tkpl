@@ -68,7 +68,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <header
-      className={`${hideInPrint ? 'no-print ' : ''}sticky top-0 z-50 border-b border-brand-line/80 bg-brand-ink/85 backdrop-blur-xl`}
+      className={`${hideInPrint ? 'no-print ' : ''}sticky top-0 z-50 border-b border-white/10 bg-[#160205]/85 backdrop-blur-xl`}
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:px-8">
         <Link
