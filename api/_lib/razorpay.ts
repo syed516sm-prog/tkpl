@@ -34,6 +34,27 @@ export function verifyRazorpaySignature(params: {
   return timingSafeEqual(expectedBuf, actualBuf);
 }
 
+/**
+ * Validates a Razorpay webhook signature against the configured webhook secret.
+ */
+export function verifyRazorpayWebhookSignature(params: {
+  rawBody: string;
+  signature: string;
+  webhookSecret: string;
+}): boolean {
+  const { rawBody, signature, webhookSecret } = params;
+  if (!rawBody || !signature || !webhookSecret) return false;
+
+  const expected = createHmac('sha256', webhookSecret)
+    .update(rawBody)
+    .digest('hex');
+
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const actualBuf = Buffer.from(signature.trim().toLowerCase(), 'utf8');
+  if (expectedBuf.length !== actualBuf.length) return false;
+  return timingSafeEqual(expectedBuf, actualBuf);
+}
+
 export interface RazorpayOrder {
   id: string;
   amount: number;

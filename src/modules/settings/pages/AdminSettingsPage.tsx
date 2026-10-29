@@ -286,19 +286,6 @@ export const AdminSettingsPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label htmlFor="cfg_upi" className="text-sm font-semibold text-zinc-200">
-                Fallback Payment UPI ID (offline / organizer reference)
-              </label>
-              <input
-                id="cfg_upi"
-                type="text"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm font-mono text-zinc-100"
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
               <label htmlFor="cfg_deadline" className="text-sm font-semibold text-zinc-200">
                 Registration Deadline
               </label>
@@ -309,33 +296,6 @@ export const AdminSettingsPage: React.FC = () => {
                 onChange={(e) => setDeadlineDate(e.target.value)}
                 className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-100"
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="cfg_min_age" className="text-sm font-semibold text-zinc-200">
-                  Min Age
-                </label>
-                <input
-                  id="cfg_min_age"
-                  type="number"
-                  value={minAge}
-                  onChange={(e) => setMinAge(e.target.value)}
-                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-100"
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label htmlFor="cfg_max_age" className="text-sm font-semibold text-zinc-200">
-                  Max Age
-                </label>
-                <input
-                  id="cfg_max_age"
-                  type="number"
-                  value={maxAge}
-                  onChange={(e) => setMaxAge(e.target.value)}
-                  className="rounded-xl border border-zinc-700 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-100"
-                />
-              </div>
             </div>
           </div>
 

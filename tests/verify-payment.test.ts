@@ -21,6 +21,7 @@ vi.mock('@supabase/supabase-js', () => {
   const from = () => {
     const chain: Record<string, unknown> = {};
     chain.select = () => chain;
+    chain.update = () => chain;
     chain.eq = () => chain;
     chain.maybeSingle = async () => ({
       data: { registration_no: 'TKPL-2026-0106', phone: '9885012345', date_of_birth: '2001-05-12' },

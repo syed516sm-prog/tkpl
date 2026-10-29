@@ -154,6 +154,18 @@ export function createVerifyPaymentHandler(deps: VerifyHandlerDeps = {}) {
 
     const stored = (verified.data ?? {}) as { registration_no?: string; receipt_no?: string };
 
+    // Auto-confirm player registration and auction eligibility upon verified payment
+    if (stored.registration_no) {
+      await supabase
+        .from('players')
+        .update({
+          registration_status: 'approved',
+          auction_status: 'eligible',
+          review_notes: 'Registration confirmed automatically upon verified Razorpay payment.',
+        })
+        .eq('registration_no', stored.registration_no);
+    }
+
     // The receipt is rendered for the player who owns this registration. The
     // phone and date of birth never leave the server: they only satisfy the
     // same three-factor gate the public receipt page uses.

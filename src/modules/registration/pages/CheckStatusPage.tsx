@@ -10,6 +10,7 @@ import {
   LockSimple,
   Receipt,
   Ticket,
+  Clock,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import { formatInrFromPaise } from '../../core/lib/validation';
@@ -288,21 +289,22 @@ export const CheckStatusPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Two Status Pillars */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <span className="block text-xs font-medium text-zinc-400 mb-2">
-                  1. Player Profile Status
-                </span>
-                <RegistrationBadge status={lookupResult.registration_status} />
-              </div>
-
-              <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <span className="block text-xs font-medium text-zinc-400 mb-2">
-                  2. Entry Confirmation & Fee
-                </span>
-                <PaymentBadge status={lookupResult.payment_status} />
-              </div>
+            {/* Status Indicator */}
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+              <span className="block text-xs font-medium text-zinc-400 mb-2">
+                Registration & Entry Status
+              </span>
+              {lookupResult.payment_status === 'verified' ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-bold text-emerald-300">
+                  <CheckCircle size={15} weight="fill" className="text-emerald-400" />
+                  <span>Confirmed · Official Tournament Entry Ready</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3.5 py-1 text-xs font-bold text-amber-300">
+                  <Clock size={15} weight="fill" className="text-amber-400" />
+                  <span>Awaiting Online Fee Payment</span>
+                </div>
+              )}
             </div>
 
             {/* Organizer Review Notes if any */}

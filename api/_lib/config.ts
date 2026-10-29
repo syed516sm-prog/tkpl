@@ -7,6 +7,7 @@ export interface ServerConfig {
   razorpayKeySecret: string;
   supabaseUrl: string;
   supabaseServiceRoleKey: string;
+  razorpayWebhookSecret?: string;
 }
 
 export type ConfigResult =
@@ -33,6 +34,7 @@ export function readServerConfig(env: Record<string, string | undefined> = proce
       razorpayKeySecret: required.RAZORPAY_KEY_SECRET!,
       supabaseUrl: required.SUPABASE_URL!,
       supabaseServiceRoleKey: required.SUPABASE_SERVICE_ROLE_KEY!,
+      razorpayWebhookSecret: env.RAZORPAY_WEBHOOK_SECRET?.trim(),
     },
   };
 }

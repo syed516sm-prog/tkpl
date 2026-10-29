@@ -58,9 +58,8 @@ export const POLICIES: Policy[] = [
         heading: 'Player eligibility and verification',
         items: [
           '**Jurisdiction:** open strictly to residents of **New Kadapa** and **Old Kadapa** (YSR Kadapa District, Andhra Pradesh).',
-          '**Age:** applicants must be between **15 and 50 years** at the time of registration.',
           '**Identity proof:** every registrant must show valid government photo ID (Aadhaar, Driving Licence or Voter ID) during physical scrutiny or jersey kit distribution.',
-          '**Scrutiny and disqualification:** the organizing committee may reject or disqualify any application with falsified age, incorrect locality details, or duplicate entries.',
+          '**Scrutiny and disqualification:** the organizing committee may reject or disqualify any application with falsified identity, incorrect locality details, or duplicate entries.',
         ],
       },
       {

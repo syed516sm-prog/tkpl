@@ -6,16 +6,14 @@ import {
   CurrencyInr,
   GearSix,
   ShieldCheck,
-  ArrowCounterClockwise,
   SignOut,
   CloudCheck,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
-import type { AdminRole } from '../../core/types/tkpl';
 
 export const AdminLayout: React.FC = () => {
   const location = useLocation();
-  const { adminSession, isCloudConnected, loginAdmin, logoutAdmin, resetDemoDatabase } = useTournament();
+  const { adminSession, isCloudConnected, logoutAdmin } = useTournament();
 
   if (!adminSession) {
     return <Navigate to="/admin/login" replace />;
@@ -30,7 +28,7 @@ export const AdminLayout: React.FC = () => {
 
   return (
     <div className="min-h-[calc(100dvh-4rem)] bg-zinc-950 text-zinc-100">
-      {/* Top Admin Context Bar with Role Switcher */}
+      {/* Top Admin Context Bar */}
       <div className="border-b border-zinc-800 bg-zinc-900/90">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -41,31 +39,15 @@ export const AdminLayout: React.FC = () => {
             <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold uppercase text-emerald-300">
               Tournament Admin
             </span>
-            {isCloudConnected ? (
+            {isCloudConnected && (
               <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-300">
                 <CloudCheck size={13} className="text-emerald-400" />
                 <span>Supabase Cloud</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[11px] font-semibold text-zinc-400">
-                <span>Demo Mode</span>
               </span>
             )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            {!isCloudConnected && (
-              <button
-                type="button"
-                onClick={resetDemoDatabase}
-                title="Reset sample data to initial state"
-                className="inline-flex items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
-              >
-                <ArrowCounterClockwise size={14} />
-                <span>Reset Demo Data</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={async () => {

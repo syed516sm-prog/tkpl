@@ -87,11 +87,11 @@ export function validateRegistrationForm(
   }
 
   if (!input.date_of_birth) {
-    errors.date_of_birth = 'Date of birth is required to verify age eligibility.';
+    errors.date_of_birth = 'Date of birth is required.';
   } else {
-    const age = calculateAgeYears(input.date_of_birth, nowDate);
-    if (age < settings.min_age || age > settings.max_age) {
-      errors.date_of_birth = `Players must be between ${settings.min_age} and ${settings.max_age} years old.`;
+    const dob = new Date(input.date_of_birth);
+    if (Number.isNaN(dob.getTime()) || dob > nowDate) {
+      errors.date_of_birth = 'Enter a valid date of birth in the past.';
     }
   }
 

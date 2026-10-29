@@ -450,7 +450,7 @@ export const RegisterPage: React.FC = () => {
                   className="rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
                 />
                 <span className="text-xs text-zinc-400">
-                  Required for age eligibility ({settings.min_age} to {settings.max_age} years).
+                  Required for player identity verification and official player pass.
                 </span>
                 {errors.date_of_birth && (
                   <p role="alert" className="text-xs font-medium text-rose-400">
