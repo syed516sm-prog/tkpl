@@ -5,3 +5,8 @@ tests
 experiments
 scripts
 *.md
+*.docx
+*.tsbuildinfo
+.kilo
+.env
+.env.local

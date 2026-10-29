@@ -38,3 +38,6 @@ pnpm-debug.log*
 .kilo/
 .playwright-cli/
 kilo-*.png
+.vercel
+.temp/
+*.temp/
