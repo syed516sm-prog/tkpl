@@ -55,6 +55,7 @@ export const HomePage: React.FC = () => {
 
       <KeyNumbers
         feeFormatted={feeFormatted}
+        adminSession={Boolean(adminSession)}
         registeredCount={confirmedCount}
       />
 
@@ -251,36 +252,52 @@ const Hero: React.FC<HeroProps> = ({
 
 interface KeyNumbersProps {
   feeFormatted: string;
+  adminSession: boolean;
   registeredCount: number;
 }
 
-const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, registeredCount }) => {
+const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, adminSession, registeredCount }) => {
   const items = [
     {
       label: 'Player Entry Fee',
       value: `${feeFormatted}/-`,
       sub: 'Official tournament registration',
-      live: false,
+      badge: null,
     },
     {
-      label: 'Registered Players',
-      value: String(registeredCount),
-      sub: 'Confirmed tournament entries',
-      live: true,
+      label: 'Tournament Ball',
+      value: 'Guru Laser',
+      sub: 'Official heavy tennis ball',
+      badge: null,
     },
+    ...(adminSession
+      ? [
+          {
+            label: 'Registered Players (Admin Only)',
+            value: String(registeredCount),
+            sub: 'Confirmed tournament entries',
+            badge: 'Admin Only',
+            link: '/admin/players',
+          },
+        ]
+      : []),
   ];
 
   return (
     <section className="relative border-b border-white/[0.08] px-4 py-12 sm:px-6 lg:px-8">
       {/* Glassmorphic Scorecard Container */}
-      <div className="relative mx-auto max-w-3xl">
+      <div className="relative mx-auto max-w-4xl">
         {/* Soft Ambient Glow under glass */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -inset-2 -z-10 rounded-3xl bg-brand-lime/10 blur-xl opacity-60"
         />
 
-        <div className="relative grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_20px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl">
+        <div
+          className={`relative grid gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_20px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl ${
+            adminSession ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'
+          }`}
+        >
           {items.map((item) => (
             <div
               key={item.label}
@@ -290,13 +307,12 @@ const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, registeredCount }
                 <p className="text-[11px] font-bold tracking-[0.2em] text-white/90 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                   {item.label}
                 </p>
-                {item.live && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-brand-lime/50 bg-black/50 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-brand-lime uppercase shadow-[0_0_15px_rgba(182,255,46,0.35)] backdrop-blur-md">
+                {item.badge && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-amber-300 uppercase shadow-[0_0_15px_rgba(251,191,36,0.25)] backdrop-blur-md">
                     <span className="relative flex h-1.5 w-1.5">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-lime opacity-75" />
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-brand-lime" />
+                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
                     </span>
-                    Live
+                    {item.badge}
                   </span>
                 )}
               </div>
@@ -306,6 +322,14 @@ const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, registeredCount }
               <p className="mt-1.5 text-xs sm:text-sm font-semibold text-zinc-100 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
                 {item.sub}
               </p>
+              {'link' in item && item.link && (
+                <Link
+                  to={item.link}
+                  className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:underline"
+                >
+                  <span>View in Admin Desk &rarr;</span>
+                </Link>
+              )}
             </div>
           ))}
         </div>
