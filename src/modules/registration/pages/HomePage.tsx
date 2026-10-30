@@ -43,6 +43,15 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="relative overflow-x-hidden text-zinc-100">
+      {adminSession && (
+        <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2.5 text-center text-xs text-amber-300">
+          <span>Admin Session Active: <strong>{confirmedCount} confirmed players</strong> registered. </span>
+          <Link to="/admin/players" className="font-bold underline ml-1 hover:text-white">
+            Open Admin Desk &rarr;
+          </Link>
+        </div>
+      )}
+
       <Hero
         feeFormatted={feeFormatted}
         registrationOpen={registrationOpen}
@@ -53,11 +62,7 @@ export const HomePage: React.FC = () => {
 
       <OrganizerShowcase />
 
-      <KeyNumbers
-        feeFormatted={feeFormatted}
-        adminSession={Boolean(adminSession)}
-        registeredCount={confirmedCount}
-      />
+      <FeaturedBanner />
 
       <PrizePool />
 
@@ -250,93 +255,23 @@ const Hero: React.FC<HeroProps> = ({
   );
 };
 
-interface KeyNumbersProps {
-  feeFormatted: string;
-  adminSession: boolean;
-  registeredCount: number;
-}
-
-const KeyNumbers: React.FC<KeyNumbersProps> = ({ feeFormatted, adminSession, registeredCount }) => {
-  const items = [
-    {
-      label: 'Player Entry Fee',
-      value: `${feeFormatted}/-`,
-      sub: 'Official tournament registration',
-      badge: null,
-    },
-    {
-      label: 'Tournament Ball',
-      value: 'Guru Laser',
-      sub: 'Official heavy tennis ball',
-      badge: null,
-    },
-    ...(adminSession
-      ? [
-          {
-            label: 'Registered Players (Admin Only)',
-            value: String(registeredCount),
-            sub: 'Confirmed tournament entries',
-            badge: 'Admin Only',
-            link: '/admin/players',
-          },
-        ]
-      : []),
-  ];
-
-  return (
-    <section className="relative border-b border-white/[0.08] px-4 py-12 sm:px-6 lg:px-8">
-      {/* Glassmorphic Scorecard Container */}
-      <div className="relative mx-auto max-w-4xl">
-        {/* Soft Ambient Glow under glass */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -inset-2 -z-10 rounded-3xl bg-brand-lime/10 blur-xl opacity-60"
-        />
-
-        <div
-          className={`relative grid gap-px overflow-hidden rounded-2xl border border-white/20 bg-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.35),0_20px_50px_rgba(0,0,0,0.65)] backdrop-blur-2xl ${
-            adminSession ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'
-          }`}
-        >
-          {items.map((item) => (
-            <div
-              key={item.label}
-              className="group relative bg-white/[0.04] px-4 py-6 sm:px-8 sm:py-7 transition-all duration-300 hover:bg-white/[0.08]"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[11px] font-bold tracking-[0.2em] text-white/90 uppercase drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-                  {item.label}
-                </p>
-                {item.badge && (
-                  <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-400/10 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wider text-amber-300 uppercase shadow-[0_0_15px_rgba(251,191,36,0.25)] backdrop-blur-md">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-amber-400" />
-                    </span>
-                    {item.badge}
-                  </span>
-                )}
-              </div>
-              <p className="mt-2 font-display text-4xl sm:text-5xl font-black tracking-tight text-white tabular-nums drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)]">
-                {item.value}
-              </p>
-              <p className="mt-1.5 text-xs sm:text-sm font-semibold text-zinc-100 drop-shadow-[0_1px_4px_rgba(0,0,0,0.9)]">
-                {item.sub}
-              </p>
-              {'link' in item && item.link && (
-                <Link
-                  to={item.link}
-                  className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 hover:underline"
-                >
-                  <span>View in Admin Desk &rarr;</span>
-                </Link>
-              )}
-            </div>
-          ))}
-        </div>
+const FeaturedBanner: React.FC = () => (
+  <section aria-label="Official Tournament Announcement" className="relative border-b border-white/[0.08] px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+    <div className="mx-auto max-w-5xl">
+      <div className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-white/15 bg-brand-surface/85 shadow-[0_16px_45px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all duration-300 hover:border-brand-lime/40 hover:shadow-[0_0_35px_rgba(182,255,46,0.25)]">
+        <picture>
+          <source srcSet="/assets/tournament-banner.webp" type="image/webp" />
+          <img
+            src="/assets/tournament-banner.jpeg"
+            alt="T-KPL Official League Tournament Banner"
+            className="w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+            loading="eager"
+          />
+        </picture>
       </div>
-    </section>
-  );
-};
+    </div>
+  </section>
+);
 
 const PRIZE_BANNERS = [
   {
