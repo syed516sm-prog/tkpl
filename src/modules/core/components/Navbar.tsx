@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { List, SignOut, UserPlus, X } from '@phosphor-icons/react';
 import { useTournament } from '../context/TournamentContext';
-import { BrandMark, BrandWordmark } from './BrandLogo';
+import { BrandMark, BrandWordmark, RoundLogo } from './BrandLogo';
 
 interface NavLinkItem {
   label: string;
@@ -74,10 +74,19 @@ export const Navbar: React.FC = () => {
         <Link
           to="/"
           aria-label="T-KPL home"
-          className="flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-lime"
+          className="flex min-w-0 items-center gap-2 sm:gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-lime group"
         >
-          <BrandMark size={36} />
-          <BrandWordmark />
+          {/* Official Round Sultan Sports Emblem */}
+          <RoundLogo size={36} className="h-8 w-8 sm:h-9 sm:w-9" />
+
+          {/* Thin Vertical Divider as shown in official artwork */}
+          <span className="h-6 sm:h-7 w-[1.5px] bg-amber-400/40 shrink-0 mx-0.5" aria-hidden="true" />
+
+          {/* TKPL Logo & Wordmark */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <BrandMark size={30} className="h-7 w-7 sm:h-8 sm:w-8" />
+            <BrandWordmark />
+          </div>
         </Link>
 
         <nav aria-label="Main navigation" className="hidden items-center gap-1 md:ml-auto md:flex">
