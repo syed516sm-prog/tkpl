@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { TournamentProvider } from './modules/core/context/TournamentContext';
 import { Navbar } from './modules/core/components/Navbar';
 import { Footer } from './modules/core/components/Footer';
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
             </Routes>
           </main>
           <Footer />
+          <Analytics />
         </div>
       </BrowserRouter>
     </TournamentProvider>
