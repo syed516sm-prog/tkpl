@@ -14,6 +14,7 @@ import type { ReceiptPayload } from '../../core/types/tkpl';
 import { isReceiptComplete, receiptFileName } from '../../core/lib/receipt';
 import { downloadReceiptPng } from '../../core/lib/receiptCanvas';
 import { ReceiptCard } from '../../payments/components/ReceiptCard';
+import { InstagramFollowSection } from '../../core/components/InstagramFollowSection';
 
 interface ReceiptLocationState {
   receipt?: ReceiptPayload;
@@ -238,6 +239,11 @@ export const ReceiptPage: React.FC = () => {
                 )}
                 <span>{copied ? 'Receipt No copied' : 'Copy Receipt No'}</span>
               </button>
+            </div>
+
+            {/* Official Instagram Channels for Players */}
+            <div className="no-print mt-6">
+              <InstagramFollowSection />
             </div>
 
             <div className="no-print mt-6 flex flex-wrap items-center justify-between gap-3 text-sm">

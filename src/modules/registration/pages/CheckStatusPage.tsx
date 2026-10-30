@@ -22,6 +22,7 @@ import {
   RegistrationBadge,
   RoleLabel,
 } from '../../core/components/StatusBadge';
+import { InstagramFollowSection } from '../../core/components/InstagramFollowSection';
 
 interface PrefillLocationState {
   prefillRegNo?: string;
@@ -510,25 +511,30 @@ export const CheckStatusPage: React.FC = () => {
 
             {/* Payment + receipt actions by payment status */}
             {lookupResult.payment_status === 'verified' ? (
-              <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 p-5 space-y-3">
-                <div className="flex items-center gap-2 text-emerald-300">
-                  <Ticket size={20} weight="bold" />
-                  <h3 className="text-base font-bold text-zinc-100">
-                    Tournament Entry Confirmed · Official Ticket Ready
-                  </h3>
+              <div className="space-y-4">
+                <div className="rounded-xl border border-emerald-500/35 bg-emerald-950/20 p-5 space-y-3">
+                  <div className="flex items-center gap-2 text-emerald-300">
+                    <Ticket size={20} weight="bold" />
+                    <h3 className="text-base font-bold text-zinc-100">
+                      Tournament Entry Confirmed · Official Ticket Ready
+                    </h3>
+                  </div>
+                  <p className="text-xs leading-relaxed text-zinc-300">
+                    Your {feeLabel} registration fee was verified by Razorpay. Your entry into the tournament is confirmed! Download your official player ticket below as a PNG image or print to save as PDF.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleViewReceipt}
+                    disabled={isOpeningReceipt}
+                    className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-60 active:scale-[0.98]"
+                  >
+                    <Ticket size={16} weight="bold" />
+                    <span>{isOpeningReceipt ? 'Opening ticket…' : 'View / Download Official Ticket'}</span>
+                  </button>
                 </div>
-                <p className="text-xs leading-relaxed text-zinc-300">
-                  Your {feeLabel} registration fee was verified by Razorpay. Your entry into the tournament is confirmed! Download your official player ticket below as a PNG image or print to save as PDF.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleViewReceipt}
-                  disabled={isOpeningReceipt}
-                  className="inline-flex items-center gap-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-60 active:scale-[0.98]"
-                >
-                  <Ticket size={16} weight="bold" />
-                  <span>{isOpeningReceipt ? 'Opening ticket…' : 'View / Download Official Ticket'}</span>
-                </button>
+
+                {/* Official Instagram Channels for Verified Players */}
+                <InstagramFollowSection />
               </div>
             ) : lookupResult.payment_status === 'refunded' ? (
               <div className="rounded-xl border border-purple-500/30 bg-purple-950/20 p-5 text-sm text-purple-200">

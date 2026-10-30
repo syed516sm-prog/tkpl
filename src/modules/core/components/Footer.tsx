@@ -3,6 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { PhoneCall, YoutubeLogo } from '@phosphor-icons/react';
 import { useTournament } from '../context/TournamentContext';
 import { BrandMark } from './BrandLogo';
+import {
+  InstagramIcon,
+  TKPL_INSTAGRAM_URL,
+  SULTAN_INSTAGRAM_URL,
+} from './InstagramFollowSection';
 
 const CONTACTS = [
   { shop: 'Sultan Sports', phone: '9110744945', logo: '/assets/sultan-sports-logo.webp' },
@@ -42,9 +47,29 @@ export const Footer: React.FC = () => {
               </span>
             </div>
             <p className="mt-4 max-w-xs text-xs leading-relaxed">{settings.privacy_notice}</p>
-            <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-brand-line px-3 py-1 text-[11px] font-semibold text-zinc-300">
-              <YoutubeLogo size={15} weight="fill" className="text-brand-red" />
-              <span>All matches live on YouTube</span>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <a
+                href={TKPL_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/35 bg-pink-950/20 px-3 py-1 text-[11px] font-semibold text-pink-300 transition hover:border-pink-400 hover:text-white"
+              >
+                <InstagramIcon className="h-3.5 w-3.5 text-pink-400" />
+                <span>TKPL Instagram</span>
+              </a>
+              <a
+                href={SULTAN_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/35 bg-pink-950/20 px-3 py-1 text-[11px] font-semibold text-pink-300 transition hover:border-pink-400 hover:text-white"
+              >
+                <InstagramIcon className="h-3.5 w-3.5 text-pink-400" />
+                <span>Sultan Sports</span>
+              </a>
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-line px-3 py-1 text-[11px] font-semibold text-zinc-300">
+                <YoutubeLogo size={15} weight="fill" className="text-brand-red" />
+                <span>Live on YouTube</span>
+              </div>
             </div>
           </div>
 
