@@ -55,11 +55,11 @@ interface BrandWordmarkProps {
 }
 
 export const BrandWordmark: React.FC<BrandWordmarkProps> = ({ className = '' }) => (
-  <span className={`font-display leading-none ${className}`}>
-    <span className="brand-text-gradient block text-[15px] font-black tracking-[0.16em] uppercase sm:text-base">
+  <span className={`font-display leading-none min-w-0 ${className}`}>
+    <span className="brand-text-gradient block text-[13px] font-black tracking-[0.14em] uppercase sm:text-base sm:tracking-[0.16em]">
       TKPL
     </span>
-    <span className="mt-1 block text-[9px] font-bold tracking-[0.24em] text-white uppercase whitespace-nowrap">
+    <span className="mt-0.5 block text-[7.5px] font-bold tracking-[0.12em] text-white uppercase whitespace-nowrap sm:mt-1 sm:text-[9.5px] sm:tracking-[0.24em]">
       Kadapa Premier League
     </span>
   </span>

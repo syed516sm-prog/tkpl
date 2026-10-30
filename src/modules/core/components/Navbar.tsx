@@ -70,21 +70,21 @@ export const Navbar: React.FC = () => {
     <header
       className={`${hideInPrint ? 'no-print ' : ''}sticky top-0 z-50 border-b border-white/10 bg-[#160205]/85 backdrop-blur-xl`}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-3 sm:px-6 lg:px-8">
         <Link
           to="/"
           aria-label="T-KPL home"
           className="flex min-w-0 items-center gap-2 sm:gap-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-lime group"
         >
           {/* Official Round Sultan Sports Emblem */}
-          <RoundLogo size={36} className="h-8 w-8 sm:h-9 sm:w-9" />
+          <RoundLogo size={32} className="h-7 w-7 sm:h-9 sm:w-9 shrink-0" />
 
           {/* Thin Vertical Divider as shown in official artwork */}
-          <span className="h-6 sm:h-7 w-[1.5px] bg-amber-400/40 shrink-0 mx-0.5" aria-hidden="true" />
+          <span className="h-5 sm:h-7 w-[1.5px] bg-amber-400/40 shrink-0 mx-0.5" aria-hidden="true" />
 
           {/* TKPL Logo & Wordmark */}
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-            <BrandMark size={30} className="h-7 w-7 sm:h-8 sm:w-8" />
+            <BrandMark size={26} className="h-6 w-6 sm:h-8 sm:w-8 shrink-0" />
             <BrandWordmark />
           </div>
         </Link>
@@ -129,14 +129,14 @@ export const Navbar: React.FC = () => {
           )}
         </nav>
 
-        <div className="ml-auto flex items-center gap-2 md:ml-3">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2 md:ml-3 shrink-0">
           <Link
             to="/register"
             aria-current={isActive(location.pathname, '/register') ? 'page' : undefined}
-            className="inline-flex items-center gap-1.5 rounded-full bg-brand-lime px-3.5 py-2 text-[12px] font-black tracking-wide text-brand-ink uppercase transition hover:brightness-110 active:scale-[0.98] sm:px-4 sm:text-[13px]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-lime px-2.5 py-1.5 text-[11px] font-black tracking-wide text-brand-ink uppercase whitespace-nowrap transition hover:brightness-110 active:scale-[0.98] sm:gap-1.5 sm:px-4 sm:py-2 sm:text-[13px]"
           >
-            <UserPlus size={15} weight="bold" />
-            <span>Register Now</span>
+            <UserPlus size={13} weight="bold" className="sm:h-4 sm:w-4" />
+            <span>Register<span className="hidden sm:inline"> Now</span></span>
           </Link>
 
           <button
@@ -146,7 +146,7 @@ export const Navbar: React.FC = () => {
             aria-expanded={menuOpen}
             aria-controls="mobile-nav-panel"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-brand-line text-zinc-200 transition hover:bg-white/5 md:hidden"
+            className="inline-flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border border-brand-line text-zinc-200 transition hover:bg-white/5 md:hidden"
           >
             {menuOpen ? <X size={18} weight="bold" /> : <List size={18} weight="bold" />}
           </button>
