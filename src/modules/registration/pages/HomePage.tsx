@@ -15,6 +15,7 @@ import { useTournament } from '../../core/context/TournamentContext';
 import { formatInrFromPaise } from '../../core/lib/validation';
 import { BRAND_LOGO_SRC } from '../../core/components/BrandLogo';
 import { OrganizerShowcase } from '../../core/components/OrganizerShowcase';
+import { SocialShowcase } from '../../core/components/SocialShowcase';
 
 export const HomePage: React.FC = () => {
   const { settings, players, payments, publicStats, adminSession } = useTournament();
@@ -58,6 +59,8 @@ export const HomePage: React.FC = () => {
       />
 
       <PrizePool />
+
+      <SocialShowcase />
 
       <ClosingCta feeFormatted={feeFormatted} registrationOpen={registrationOpen} />
     </div>

@@ -3,6 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { List, SignOut, UserPlus, X } from '@phosphor-icons/react';
 import { useTournament } from '../context/TournamentContext';
 import { BrandMark, BrandWordmark, RoundLogo } from './BrandLogo';
+import {
+  InstagramIcon,
+  TKPL_INSTAGRAM_URL,
+  SULTAN_INSTAGRAM_URL,
+} from './InstagramFollowSection';
 
 interface NavLinkItem {
   label: string;
@@ -191,6 +196,32 @@ export const Navbar: React.FC = () => {
               <span>Sign out of admin</span>
             </button>
           )}
+
+          <div className="mt-3 pt-3 border-t border-white/10 flex flex-col gap-2">
+            <span className="px-3 text-[10px] font-bold uppercase tracking-[0.2em] text-pink-400">
+              Official Instagram
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={TKPL_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-pink-500/30 bg-pink-950/20 py-2.5 px-2 text-xs font-semibold text-pink-300 transition hover:bg-pink-900/30 hover:text-white"
+              >
+                <InstagramIcon className="h-3.5 w-3.5 text-pink-400 shrink-0" />
+                <span className="truncate">TKPL League</span>
+              </a>
+              <a
+                href={SULTAN_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-pink-500/30 bg-pink-950/20 py-2.5 px-2 text-xs font-semibold text-pink-300 transition hover:bg-pink-900/30 hover:text-white"
+              >
+                <InstagramIcon className="h-3.5 w-3.5 text-pink-400 shrink-0" />
+                <span className="truncate">Sultan Sports</span>
+              </a>
+            </div>
+          </div>
         </nav>
       </div>
     </header>
