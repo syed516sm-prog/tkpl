@@ -36,7 +36,7 @@ interface PendingRegistrationSession {
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { settings, submitRegistration } = useTournament();
+  const { settings, submitRegistration, findRegistrationByPhoneDob, lookupStatus } = useTournament();
 
   const [idempotencyKey] = useState<string>(
     () => `idem-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -179,6 +179,46 @@ export const RegisterPage: React.FC = () => {
         err instanceof Error
           ? err.message
           : 'Unable to submit registration right now. Your entered details have been kept safe; please retry.';
+
+      // Seamless recovery: if this player already registered but hasn't paid yet,
+      // recover their pending registration directly into the payment screen instead of blocking them!
+      if (/already exists|DUPLICATE_PHONE/i.test(message)) {
+        try {
+          const recovered = await findRegistrationByPhoneDob(form.phone, form.date_of_birth);
+          if (recovered) {
+            const status = await lookupStatus(recovered.registration_no, form.phone, form.date_of_birth);
+            if (status && status.payment_status === 'pending') {
+              setSavedRegistration({
+                player_id: '',
+                registration_no: recovered.registration_no,
+                full_name: recovered.full_name,
+                payment_status: 'pending',
+                created_at: status.submitted_at || new Date().toISOString(),
+              });
+              try {
+                localStorage.setItem(
+                  PENDING_STORAGE_KEY,
+                  JSON.stringify({
+                    player_id: '',
+                    registration_no: recovered.registration_no,
+                    full_name: recovered.full_name,
+                    phone: form.phone,
+                    date_of_birth: form.date_of_birth,
+                    created_at: status.submitted_at,
+                  })
+                );
+              } catch {
+                // Storage unavailable
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              return;
+            }
+          }
+        } catch {
+          // If recovery throws, fall through to display the friendly actionable error
+        }
+      }
+
       setSubmitError(message);
     } finally {
       setIsSubmitting(false);
@@ -441,10 +481,27 @@ export const RegisterPage: React.FC = () => {
         {(submitError || errors.form) && (
           <div
             role="alert"
-            className="mt-6 flex items-start gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 p-5 text-rose-200"
+            className="mt-6 flex flex-col gap-3 rounded-2xl border border-rose-500/40 bg-rose-950/50 p-5 text-rose-200"
           >
-            <WarningCircle size={22} className="mt-0.5 shrink-0 text-rose-400" />
-            <div className="text-sm font-medium">{submitError || errors.form}</div>
+            <div className="flex items-start gap-3">
+              <WarningCircle size={22} className="mt-0.5 shrink-0 text-rose-400" />
+              <div className="text-sm font-medium">{submitError || errors.form}</div>
+            </div>
+            {/already exists|DUPLICATE_PHONE|Check Status/i.test(submitError || errors.form || '') && (
+              <div className="pt-1 sm:pl-8">
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate('/check-status', {
+                      state: { prefillPhone: form.phone, prefillDob: form.date_of_birth },
+                    })
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-xs font-bold text-zinc-950 shadow transition hover:bg-amber-300 active:scale-[0.98]"
+                >
+                  <span>Complete Payment & View Ticket Status &rarr;</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

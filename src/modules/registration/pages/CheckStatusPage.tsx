@@ -66,8 +66,27 @@ export const CheckStatusPage: React.FC = () => {
       } catch {
         // Storage unavailable or disabled
       }
+    } else if (prefill?.prefillPhone && prefill?.prefillDob && !registrationNo) {
+      setIsSearching(true);
+      setHasSearched(true);
+      findRegistrationByPhoneDob(prefill.prefillPhone, prefill.prefillDob)
+        .then(async (res) => {
+          if (res) {
+            setRegistrationNo(res.registration_no);
+            const status = await lookupStatus(res.registration_no, prefill.prefillPhone!, prefill.prefillDob!);
+            if (status) {
+              setLookupResult(status);
+            }
+          }
+        })
+        .catch(() => {
+          // ignore auto-lookup failure
+        })
+        .finally(() => {
+          setIsSearching(false);
+        });
     }
-  }, [prefill, registrationNo]);
+  }, [prefill, registrationNo, findRegistrationByPhoneDob, lookupStatus]);
 
   // Online payment + receipt actions
   const [isPaying, setIsPaying] = useState(false);
