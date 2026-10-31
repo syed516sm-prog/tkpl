@@ -4,6 +4,7 @@ export const BRAND_LOGO_SRC = '/assets/brand-logo.svg';
 export const BRAND_MARK_SRC = '/assets/brand-mark.svg';
 export const ROUND_LOGO_SRC = '/assets/round-logo.webp';
 export const ROUND_LOGO_PNG = '/assets/round-logo.png';
+export const NR_LOGO_SRC = '/assets/nr-sports-logo.webp';
 
 interface BrandMarkProps {
   className?: string;
@@ -48,6 +49,30 @@ export const RoundLogo: React.FC<RoundLogoProps> = ({ className = '', size = 38 
       className="rounded-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
     />
   </picture>
+);
+
+interface NrLogoProps {
+  className?: string;
+  size?: number;
+}
+
+/**
+ * Official circular emblem for NR Sports (Vempalli).
+ */
+export const NrLogo: React.FC<NrLogoProps> = ({ className = '', size = 38 }) => (
+  <span
+    aria-hidden="true"
+    className={`relative inline-flex shrink-0 items-center justify-center ${className}`}
+    style={{ width: size, height: size }}
+  >
+    <img
+      src={NR_LOGO_SRC}
+      alt="NR Sports"
+      draggable={false}
+      style={{ width: size, height: size }}
+      className="rounded-full object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]"
+    />
+  </span>
 );
 
 interface BrandWordmarkProps {

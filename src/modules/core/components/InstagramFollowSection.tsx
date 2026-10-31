@@ -1,11 +1,13 @@
 import React from 'react';
 import { ArrowSquareOut } from '@phosphor-icons/react';
-import { BrandMark, RoundLogo } from './BrandLogo';
+import { BrandMark, RoundLogo, NrLogo } from './BrandLogo';
 
 export const TKPL_INSTAGRAM_URL =
   'https://www.instagram.com/tkpl_gurulazer_tennisball_kpl?exln=Ym8wdzZyMGU1NjNl';
 export const SULTAN_INSTAGRAM_URL =
   'https://www.instagram.com/sultansports_kadapa?cplk=cnpuaGozdnppeTc0';
+export const NR_SPORTS_INSTAGRAM_URL =
+  'https://www.instagram.com/nr_sports_vempalli?utm_source=qr&exln=MXM4dHE5bDE1M2libA==';
 
 export const InstagramIcon: React.FC<{ className?: string }> = ({ className = 'h-5 w-5' }) => (
   <svg
@@ -49,7 +51,7 @@ export const InstagramFollowSection: React.FC<InstagramFollowSectionProps> = ({
         Don’t miss out! Team owner auction bids, player feature reels, live match photos, and schedule announcements are posted directly on our Instagram pages.
       </p>
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {/* TKPL Official League Handle */}
         <a
           href={TKPL_INSTAGRAM_URL}
@@ -89,6 +91,30 @@ export const InstagramFollowSection: React.FC<InstagramFollowSectionProps> = ({
               </span>
               <span className="block truncate text-[11px] font-mono text-zinc-300">
                 @sultansports_kadapa
+              </span>
+            </div>
+          </div>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[#f09433] via-[#dc2743] to-[#bc1888] px-3 py-1.5 text-[11px] font-bold text-white shadow-md transition-transform group-hover:scale-105">
+            <span>Follow</span>
+            <ArrowSquareOut size={13} weight="bold" />
+          </span>
+        </a>
+
+        {/* NR Sports Handle */}
+        <a
+          href={NR_SPORTS_INSTAGRAM_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3.5 transition-all hover:border-pink-500/60 hover:bg-gradient-to-r hover:from-pink-950/40 hover:to-zinc-900 active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <NrLogo size={32} />
+            <div className="min-w-0">
+              <span className="block text-xs font-black text-white group-hover:text-brand-lime">
+                NR Sports Vempalli
+              </span>
+              <span className="block truncate text-[11px] font-mono text-zinc-300">
+                @nr_sports_vempalli
               </span>
             </div>
           </div>

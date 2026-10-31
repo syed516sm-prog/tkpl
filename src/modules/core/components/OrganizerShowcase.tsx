@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { CaretLeft, CaretRight, PhoneCall, ShieldCheck, Sparkle } from '@phosphor-icons/react';
 import { useReducedMotion } from 'motion/react';
+import {
+  InstagramIcon,
+  SULTAN_INSTAGRAM_URL,
+  NR_SPORTS_INSTAGRAM_URL,
+} from './InstagramFollowSection';
 
 interface OrganizerSlide {
   name: string;
@@ -11,6 +16,8 @@ interface OrganizerSlide {
   logo: string;
   accent: string;
   badgeColor: string;
+  instagramUrl?: string;
+  instagramHandle?: string;
 }
 
 const SLIDES: OrganizerSlide[] = [
@@ -23,6 +30,8 @@ const SLIDES: OrganizerSlide[] = [
     logo: '/assets/sultan-sports-logo.webp',
     accent: 'text-brand-yellow',
     badgeColor: 'border-brand-yellow/40 bg-brand-yellow/15 text-brand-yellow',
+    instagramUrl: SULTAN_INSTAGRAM_URL,
+    instagramHandle: '@sultansports_kadapa',
   },
   {
     name: 'Sunil',
@@ -33,6 +42,8 @@ const SLIDES: OrganizerSlide[] = [
     logo: '/assets/nr-sports-logo.webp',
     accent: 'text-brand-lime',
     badgeColor: 'border-brand-lime/40 bg-brand-lime/15 text-brand-lime',
+    instagramUrl: NR_SPORTS_INSTAGRAM_URL,
+    instagramHandle: '@nr_sports_vempalli',
   },
 ];
 
@@ -186,16 +197,30 @@ export const OrganizerShowcase: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* Direct Call Button */}
-                  <a
-                    href={`tel:${slide.phone}`}
-                    className="group/call mt-4 inline-flex items-center justify-center gap-2.5 rounded-full border border-white/20 bg-black/70 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-300 hover:border-brand-lime hover:bg-brand-lime hover:text-brand-ink hover:shadow-[0_0_25px_rgba(182,255,46,0.6)] active:scale-95"
-                  >
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/10 transition-colors group-hover/call:bg-black/15">
-                      <PhoneCall size={14} weight="fill" className="text-brand-lime group-hover/call:text-brand-ink" />
-                    </span>
-                    <span className="tracking-wide">Call Direct: {slide.phone}</span>
-                  </a>
+                  {/* Action Buttons: Direct Call + Instagram */}
+                  <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                    <a
+                      href={`tel:${slide.phone}`}
+                      className="group/call inline-flex items-center justify-center gap-2 rounded-full border border-white/20 bg-black/70 px-4 py-2 text-xs sm:text-sm font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-300 hover:border-brand-lime hover:bg-brand-lime hover:text-brand-ink hover:shadow-[0_0_25px_rgba(182,255,46,0.6)] active:scale-95"
+                    >
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 transition-colors group-hover/call:bg-black/15">
+                        <PhoneCall size={13} weight="fill" className="text-brand-lime group-hover/call:text-brand-ink" />
+                      </span>
+                      <span className="tracking-wide">Call: {slide.phone}</span>
+                    </a>
+
+                    {slide.instagramUrl && (
+                      <a
+                        href={slide.instagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full border border-pink-500/35 bg-pink-950/50 px-3.5 py-2 text-xs sm:text-sm font-bold text-pink-300 shadow-[0_6px_20px_rgba(0,0,0,0.6)] backdrop-blur-md transition-all duration-300 hover:border-pink-400 hover:bg-pink-900/60 hover:text-white active:scale-95"
+                      >
+                        <InstagramIcon className="h-3.5 w-3.5 text-pink-400" />
+                        <span>{slide.instagramHandle}</span>
+                      </a>
+                    )}
+                  </div>
                 </div>
               </article>
             ))}
