@@ -89,15 +89,6 @@ export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
     reasonText: 'Payment window opened, exited without paying',
   },
   {
-    reg_no: 'TKPL-2026-0253',
-    name: 'Manjuvardhanreddy',
-    phone: '8309277136',
-    town: 'Kadapa',
-    role: 'All Rounder',
-    reasonKind: 'upi_failed',
-    reasonText: 'UPI app notification timed out / expired',
-  },
-  {
     reg_no: 'TKPL-2026-0255',
     name: 'M.praveen Kumar reddy',
     phone: '8977575279',
@@ -105,15 +96,6 @@ export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
     role: 'All Rounder',
     reasonKind: 'abandoned',
     reasonText: 'Registered profile, did not open payment gateway',
-  },
-  {
-    reg_no: 'TKPL-2026-0259',
-    name: 'Mude Ganesh Naik',
-    phone: '9381490393',
-    town: 'Kanampalli',
-    role: 'All Rounder',
-    reasonKind: 'abandoned',
-    reasonText: 'Payment window opened, exited without paying',
   },
   {
     reg_no: 'TKPL-2026-0265',
