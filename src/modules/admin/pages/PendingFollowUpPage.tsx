@@ -133,6 +133,15 @@ export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
     reasonKind: 'abandoned',
     reasonText: 'Payment window opened, exited without paying',
   },
+  {
+    reg_no: 'TKPL-2026-0297',
+    name: 'V SHARATH YADAV',
+    phone: '9440176681',
+    town: 'Kadapa',
+    role: 'All Rounder',
+    reasonKind: 'abandoned',
+    reasonText: 'Payment window opened, exited without paying',
+  },
 ];
 
 type TemplateId = 'smart' | 'friendly' | 'urgent' | 'telugu' | 'custom';
