@@ -32,17 +32,8 @@ export interface PendingPlayerItem {
   reasonText: string;
 }
 
-// 14 verified pending players with their audited failure reasons
+// Active pending players needing follow-up
 export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
-  {
-    reg_no: 'TKPL-2026-0107',
-    name: 'G.Gurivireddy',
-    phone: '7396161620',
-    town: 'Yerraguntla',
-    role: 'All Rounder',
-    reasonKind: 'upi_failed',
-    reasonText: 'UPI app notification timed out / expired',
-  },
   {
     reg_no: 'TKPL-2026-0122',
     name: 'B VINOD KUMAR REDDY',
@@ -51,15 +42,6 @@ export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
     role: 'All Rounder',
     reasonKind: 'abandoned',
     reasonText: 'Payment window opened, exited without paying',
-  },
-  {
-    reg_no: 'TKPL-2026-0125',
-    name: 'M SYED NASRUDDIN',
-    phone: '9949486154',
-    town: 'Proddatur',
-    role: 'Wicketkeeper',
-    reasonKind: 'abandoned',
-    reasonText: 'Registered profile, did not open payment gateway',
   },
   {
     reg_no: 'TKPL-2026-0130',
@@ -160,6 +142,15 @@ export const INITIAL_PENDING_PLAYERS: PendingPlayerItem[] = [
     reasonKind: 'abandoned',
     reasonText: 'Payment window opened, exited without paying',
   },
+  {
+    reg_no: 'TKPL-2026-0289',
+    name: 'Moula',
+    phone: '9160590577',
+    town: 'C.K.DINNE, KADAPA',
+    role: 'All Rounder',
+    reasonKind: 'abandoned',
+    reasonText: 'Payment window opened, exited without paying',
+  },
 ];
 
 type TemplateId = 'smart' | 'friendly' | 'urgent' | 'telugu' | 'custom';
@@ -221,9 +212,13 @@ export const PendingFollowUpPage: React.FC<{ isStandalone?: boolean }> = ({ isSt
         payments.filter((py) => py.status === 'verified').map((py) => py.registration_no)
       );
 
-      // Filter context players who are not verified
+      // Filter context players who are not verified and not withdrawn/rejected
       const unverified = players.filter(
-        (p) => !verifiedPlayerIds.has(p.id) && !verifiedRegNos.has(p.registration_no)
+        (p) =>
+          !verifiedPlayerIds.has(p.id) &&
+          !verifiedRegNos.has(p.registration_no) &&
+          p.registration_status !== 'withdrawn' &&
+          p.registration_status !== 'rejected'
       );
 
       if (unverified.length > 0) {
