@@ -1,10 +1,16 @@
 @echo off
-rem One-time helper: pushes the TKPL project to GitHub in a visible window
-rem so the GitHub sign-in prompt can appear. Safe to delete afterwards.
+rem TKPL GitHub Push Helper
 cd /d "%~dp0.."
-echo Pushing TKPL to https://github.com/r73608925-lab/TKPL.git
-echo If asked, sign in as r73608925-lab. For a password, paste a GitHub access token.
+echo Pushing TKPL to GitHub (neworigin main)...
+git push neworigin main
+if %errorlevel% neq 0 (
+    echo.
+    echo Trying origin main...
+    git push origin main
+)
 echo.
-git push -u origin main
+echo ========================================================
+echo Push complete! Vercel will automatically redeploy now.
+echo ========================================================
 echo.
 pause
