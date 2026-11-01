@@ -69,6 +69,11 @@ Without `vercel dev`, the website still works (registration + status + admin), b
 
 ### Key Admin Tasks
 - **See what came in (`/admin`):** The Overview shows **Amount collected via Razorpay**, **Confirmed Entries**, and the audit log (each online payment is logged as `PAYMENT_VERIFIED_RAZORPAY` by the server).
+- **Follow-up with pending players (`/admin/follow-up` or `/follow-up`):** The **Pending Follow-Up Dashboard** lists all players whose payment failed or was abandoned. Features include:
+  - **1-Click WhatsApp Broadcast Runner:** Quickly opens WhatsApp Web for each pending player with a tailored, pre-filled message and payment link.
+  - **Smart Templates:** Automatically tailors messages based on why payment failed (UPI timeout vs abandoned checkout), plus English, Telugu, and custom templates.
+  - **Copy Contact Lists:** Instant 1-click copy of phone numbers for SMS gateways or broadcast lists.
+  - **Standalone Desktop Access:** Double-click `C:\Users\liter\Desktop\TKPL_Pending_FollowUp_Dashboard.html` to run offline without starting the server!
 - **Check the payment ledger (`/admin/payments`):** Every online payment is **already Verified** — Razorpay's signature was checked before the receipt number was issued. The table shows the **Receipt No** and the **Razorpay Payment ID** so you can match them against your Razorpay dashboard.
 - **Export (`/admin/players`):** **Export Registered Players CSV** gives receipt no, registration no, player name, contact info, locality, and playing role. The export is written to the audit log.
 - **Review a player (`/admin/players`):** Open **Inspect**, check the photo and cricket details, and set **Approved** or request corrections.

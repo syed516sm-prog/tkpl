@@ -17,6 +17,7 @@ import { AdminOverviewPage } from './modules/admin/pages/AdminOverviewPage';
 import { AdminPlayersPage } from './modules/players/pages/AdminPlayersPage';
 import { AdminPlayerDetailPage } from './modules/players/pages/AdminPlayerDetailPage';
 import { AdminPaymentsPage } from './modules/payments/pages/AdminPaymentsPage';
+import { PendingFollowUpPage } from './modules/admin/pages/PendingFollowUpPage';
 import { AdminSettingsPage } from './modules/settings/pages/AdminSettingsPage';
 
 export const App: React.FC = () => {
@@ -38,12 +39,15 @@ export const App: React.FC = () => {
               <Route path="/check-status" element={<CheckStatusPage />} />
               <Route path="/policies" element={<Navigate to="/policies/terms" replace />} />
               <Route path="/policies/:slug" element={<PolicyPage />} />
+              <Route path="/follow-up" element={<PendingFollowUpPage isStandalone={true} />} />
+              <Route path="/notifications" element={<Navigate to="/follow-up" replace />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminOverviewPage />} />
                 <Route path="players" element={<AdminPlayersPage />} />
                 <Route path="players/:id" element={<AdminPlayerDetailPage />} />
                 <Route path="payments" element={<AdminPaymentsPage />} />
+                <Route path="follow-up" element={<PendingFollowUpPage />} />
                 <Route path="settings" element={<AdminSettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   SignOut,
   CloudCheck,
+  ChatCircleDots,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 
@@ -23,6 +24,7 @@ export const AdminLayout: React.FC = () => {
     { path: '/admin', label: 'Overview & Audit', icon: ChartBar, exact: true },
     { path: '/admin/players', label: 'Players & Roster', icon: Users, exact: false },
     { path: '/admin/payments', label: 'Payment Ledger', icon: CurrencyInr, exact: false },
+    { path: '/admin/follow-up', label: 'Pending Follow-Ups (14)', icon: ChatCircleDots, exact: false },
     { path: '/admin/settings', label: 'Tournament Settings', icon: GearSix, exact: false },
   ];
 

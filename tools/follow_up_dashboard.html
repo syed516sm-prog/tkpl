@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TKPL 2026 — Pending Player Follow-Up Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
+    }
+    .font-mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-zinc-950 text-zinc-100 antialiased pb-16">
+
+  <!-- Header -->
+  <header class="border-b border-zinc-800/80 bg-zinc-900/90 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-lg shadow-emerald-950/50">
+          <span class="text-xl">🏏</span>
+        </div>
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-amber-400">T-KPL 2026 Season 1</div>
+          <h1 class="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
+            <span>Pending Players Follow-Up Dashboard</span>
+            <span class="text-xs bg-amber-500/10 border border-amber-500/30 text-amber-400 px-2 py-0.5 rounded-full font-mono">14 Pending</span>
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button onclick="startBroadcastRunner()" class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-950/50 transition active:scale-95 cursor-pointer">
+          <span>🚀 Launch Broadcast Runner</span>
+          <span id="headerSelectedBadge" class="bg-emerald-950/60 px-1.5 py-0.2 rounded text-[11px] font-mono">14</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 pt-6 space-y-6">
+
+    <!-- KPI Summary Row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
+        <div class="text-[11px] uppercase tracking-wider font-semibold text-zinc-400">Total Pending Players</div>
+        <div class="text-2xl sm:text-3xl font-extrabold text-white mt-1">14</div>
+        <div class="text-[11px] text-zinc-500 mt-0.5">Profiles submitted, unpaid</div>
+      </div>
+      <div class="bg-red-950/20 border border-red-500/30 rounded-2xl p-4">
+        <div class="text-[11px] uppercase tracking-wider font-semibold text-red-400">UPI Failed</div>
+        <div class="text-2xl sm:text-3xl font-extrabold text-red-300 mt-1">5</div>
+        <div class="text-[11px] text-red-400/80 mt-0.5">Timed out or insufficient funds</div>
+      </div>
+      <div class="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-4">
+        <div class="text-[11px] uppercase tracking-wider font-semibold text-amber-400">Checkout Abandoned</div>
+        <div class="text-2xl sm:text-3xl font-extrabold text-amber-300 mt-1">9</div>
+        <div class="text-[11px] text-amber-400/80 mt-0.5">Left before paying ₹399</div>
+      </div>
+      <div class="bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-4">
+        <div class="text-[11px] uppercase tracking-wider font-semibold text-emerald-400">Recoverable Revenue</div>
+        <div class="text-2xl sm:text-3xl font-extrabold text-emerald-300 mt-1">₹5,586</div>
+        <div class="text-[11px] text-emerald-400/80 mt-0.5" id="kpiNotifiedProgress">0 of 14 contacted</div>
+      </div>
+    </div>
+
+    <!-- Message Template Configuration Card -->
+    <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+        <div class="flex items-center gap-2">
+          <span class="text-amber-400 text-lg">✨</span>
+          <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-100">Notification Message Template</h2>
+        </div>
+        <span class="text-xs text-zinc-400">Auto-injects Name, Reg No, Town, Role & Direct Payment Link</span>
+      </div>
+
+      <!-- Template Selection Pills -->
+      <div class="flex flex-wrap gap-2" id="templatePillContainer">
+        <button onclick="setTemplate('smart')" id="pill-smart" class="template-pill rounded-xl px-3.5 py-2 text-xs font-semibold text-left border transition border-emerald-500 bg-emerald-500/10 text-emerald-300">
+          <div class="font-bold">🤖 Smart Auto-Context</div>
+          <div class="text-[10px] text-zinc-400">Auto-tailors message for UPI Failed vs Abandoned</div>
+        </button>
+        <button onclick="setTemplate('friendly')" id="pill-friendly" class="template-pill rounded-xl px-3.5 py-2 text-xs font-semibold text-left border transition border-zinc-800 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800">
+          <div class="font-bold">💬 Friendly Reminder</div>
+          <div class="text-[10px] text-zinc-400">Polite English reminder to confirm spot</div>
+        </button>
+        <button onclick="setTemplate('urgent')" id="pill-urgent" class="template-pill rounded-xl px-3.5 py-2 text-xs font-semibold text-left border transition border-zinc-800 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800">
+          <div class="font-bold">⚠️ Urgent Final Call</div>
+          <div class="text-[10px] text-zinc-400">Auction cutoff warning before release</div>
+        </button>
+        <button onclick="setTemplate('telugu')" id="pill-telugu" class="template-pill rounded-xl px-3.5 py-2 text-xs font-semibold text-left border transition border-zinc-800 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800">
+          <div class="font-bold">🏏 Telugu (తెలుగు)</div>
+          <div class="text-[10px] text-zinc-400">Regional Telugu language notification</div>
+        </button>
+        <button onclick="setTemplate('custom')" id="pill-custom" class="template-pill rounded-xl px-3.5 py-2 text-xs font-semibold text-left border transition border-zinc-800 bg-zinc-800/40 text-zinc-300 hover:bg-zinc-800">
+          <div class="font-bold">✏️ Custom Template</div>
+          <div class="text-[10px] text-zinc-400">Edit message text freely</div>
+        </button>
+      </div>
+
+      <!-- Custom Template Textarea -->
+      <div id="customTemplateWrapper" class="hidden space-y-1 pt-2">
+        <div class="text-xs text-zinc-400">Tags: <code class="text-emerald-400">{name}</code>, <code class="text-emerald-400">{reg_no}</code>, <code class="text-emerald-400">{role}</code>, <code class="text-emerald-400">{town}</code>, <code class="text-emerald-400">{link}</code></div>
+        <textarea id="customTemplateInput" rows="4" oninput="renderPreview()" class="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-3 text-xs font-mono text-zinc-200 focus:outline-none focus:border-emerald-500"></textarea>
+      </div>
+
+      <!-- Live Preview Box -->
+      <div class="bg-zinc-950/80 border border-zinc-800 rounded-xl p-4">
+        <div class="flex items-center justify-between text-xs text-zinc-400 pb-2 border-b border-zinc-900 mb-2">
+          <span class="font-semibold text-zinc-300 flex items-center gap-1.5">
+            <span class="text-emerald-400">💬</span> WhatsApp Message Preview (Sample Player):
+          </span>
+          <span class="text-[11px] text-zinc-500">Includes direct payment lookup link</span>
+        </div>
+        <div id="messagePreview" class="whitespace-pre-wrap font-sans text-xs text-emerald-200/90 leading-relaxed bg-zinc-900/60 p-3 rounded-lg border border-emerald-950/40"></div>
+      </div>
+    </div>
+
+    <!-- Batch Actions & Filter Bar -->
+    <div class="bg-zinc-900/70 border border-zinc-800 rounded-2xl p-4 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="startBroadcastRunner()" class="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition shadow active:scale-95 cursor-pointer">
+            <span>🚀 Run WhatsApp Broadcast</span>
+            <span id="btnSelectedCount" class="bg-emerald-800 px-1.5 py-0.2 rounded font-mono">14</span>
+          </button>
+          <button onclick="openAllTabsStaggered()" class="inline-flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 font-semibold text-xs px-3 py-2 rounded-xl transition cursor-pointer" title="Opens WhatsApp Web tabs with 2-sec delay">
+            <span>⚡ Open All Tabs (Staggered)</span>
+          </button>
+          <div class="h-4 w-px bg-zinc-800 hidden sm:block"></div>
+          <button onclick="copyPhoneNumbers(',')" class="inline-flex items-center gap-1 bg-zinc-950 hover:border-zinc-700 border border-zinc-800 text-zinc-300 text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer">
+            <span>📋 Copy Phone Numbers</span>
+          </button>
+          <button onclick="copyAllMessages()" class="inline-flex items-center gap-1 bg-zinc-950 hover:border-zinc-700 border border-zinc-800 text-zinc-300 text-xs px-2.5 py-1.5 rounded-lg transition cursor-pointer">
+            <span>📄 Copy All Messages</span>
+          </button>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div class="flex items-center gap-2 text-xs text-zinc-400">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Contacted: <strong id="sentCountText" class="text-emerald-300">0</strong> / 14</span>
+          <button onclick="resetSentStatus()" class="text-[11px] text-zinc-500 hover:text-red-400 underline ml-1 cursor-pointer">Reset Status</button>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-zinc-800/60">
+        <div class="relative flex-1 min-w-[240px] max-w-md">
+          <input type="text" id="searchInput" oninput="renderTable()" placeholder="Search player name, phone, town..." class="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2 px-3 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500">
+        </div>
+
+        <div class="flex flex-wrap items-center gap-1.5 text-xs">
+          <span class="text-zinc-500 mr-1 text-[11px]">Filter:</span>
+          <button onclick="setFilter('all')" id="btnFilter-all" class="filter-btn px-2.5 py-1 rounded-lg font-semibold bg-zinc-800 text-white border border-zinc-600">All (14)</button>
+          <button onclick="setFilter('upi_failed')" id="btnFilter-upi_failed" class="filter-btn px-2.5 py-1 rounded-lg font-semibold text-zinc-400 hover:text-white">UPI Failed (5)</button>
+          <button onclick="setFilter('abandoned')" id="btnFilter-abandoned" class="filter-btn px-2.5 py-1 rounded-lg font-semibold text-zinc-400 hover:text-white">Abandoned (9)</button>
+          <button onclick="setFilter('unsent')" id="btnFilter-unsent" class="filter-btn px-2.5 py-1 rounded-lg font-semibold text-zinc-400 hover:text-white">Unsent Only</button>
+          <button onclick="setFilter('sent')" id="btnFilter-sent" class="filter-btn px-2.5 py-1 rounded-lg font-semibold text-zinc-400 hover:text-white">Sent Only</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div id="toastMessage" class="hidden rounded-xl bg-emerald-950/90 border border-emerald-500/40 px-4 py-2 text-xs font-semibold text-emerald-300 flex items-center gap-2 shadow-lg"></div>
+
+    <!-- Players Table -->
+    <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs text-zinc-300">
+          <thead class="bg-zinc-950/80 text-[11px] uppercase tracking-wider text-zinc-400 border-b border-zinc-800">
+            <tr>
+              <th class="py-3 px-4 w-10">
+                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()" class="h-4 w-4 rounded bg-zinc-900 border-zinc-700 text-emerald-500 cursor-pointer">
+              </th>
+              <th class="py-3 px-3">Reg No</th>
+              <th class="py-3 px-3">Player Name</th>
+              <th class="py-3 px-3">Mobile & Direct Call</th>
+              <th class="py-3 px-3">Town / Role</th>
+              <th class="py-3 px-3">Follow-Up Reason</th>
+              <th class="py-3 px-3 text-center">Status</th>
+              <th class="py-3 px-4 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="playerTableBody" class="divide-y divide-zinc-800/80">
+            <!-- Rendered by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Broadcast Queue Runner Modal -->
+  <div id="runnerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+        <div>
+          <div class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">🚀 WhatsApp Broadcast Runner</div>
+          <h3 class="text-base sm:text-lg font-bold text-white mt-0.5" id="runnerQueueTitle">Player 1 of 14</h3>
+        </div>
+        <button onclick="closeBroadcastRunner()" class="text-zinc-400 hover:text-white p-1 rounded-lg text-lg cursor-pointer">✕</button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+        <div id="runnerProgressBar" class="bg-emerald-500 h-full transition-all duration-300" style="width: 7%"></div>
+      </div>
+
+      <!-- Player Detail Card -->
+      <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-1.5" id="runnerPlayerCard">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Message Text -->
+      <div class="space-y-1">
+        <div class="text-xs font-semibold text-zinc-400">Message to Send:</div>
+        <div id="runnerMessageText" class="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-xl border border-zinc-800 bg-zinc-950 p-3 text-xs text-emerald-200/90 font-mono"></div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-between gap-3 pt-2">
+        <button onclick="skipRunnerPlayer()" class="text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition cursor-pointer">Skip to Next ⏭</button>
+        <div class="flex items-center gap-2">
+          <button onclick="closeBroadcastRunner()" class="border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer">Cancel</button>
+          <button onclick="sendCurrentRunnerPlayer()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-lg transition active:scale-95 cursor-pointer">
+            <span>💬 Send on WhatsApp & Next</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PLAYERS = [
+      { reg_no: 'TKPL-2026-0107', name: 'G.Gurivireddy', phone: '7396161620', town: 'Yerraguntla', role: 'All Rounder', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
+      { reg_no: 'TKPL-2026-0122', name: 'B VINOD KUMAR REDDY', phone: '8500849901', town: 'Pulivendula', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0125', name: 'M SYED NASRUDDIN', phone: '9949486154', town: 'Proddatur', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Registered profile, did not open payment gateway' },
+      { reg_no: 'TKPL-2026-0130', name: 'Vulasala Bharath', phone: '7995250457', town: 'GALIVEEDU', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'Insufficient bank account balance during UPI attempt' },
+      { reg_no: 'TKPL-2026-0164', name: 'Bhanu prakash', phone: '9100859612', town: 'Kadapa', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0212', name: 'Rachamallu Mallikarjuna Reddy', phone: '9652490435', town: 'Vempalli', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0223', name: 'Sonu akthar', phone: '6309928386', town: 'Kadapa', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
+      { reg_no: 'TKPL-2026-0233', name: 'Shaik Mohammad', phone: '7842625468', town: 'Kadapa district Vempalli', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0253', name: 'Manjuvardhanreddy', phone: '8309277136', town: 'Kadapa', role: 'All Rounder', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
+      { reg_no: 'TKPL-2026-0255', name: 'M.praveen Kumar reddy', phone: '8977575279', town: 'Kondur', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Registered profile, did not open payment gateway' },
+      { reg_no: 'TKPL-2026-0259', name: 'Mude Ganesh Naik', phone: '9381490393', town: 'Kanampalli', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0265', name: 'Sunny Sunny', phone: '7794932709', town: 'Kadapa', role: 'Batter', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
+      { reg_no: 'TKPL-2026-0266', name: 'Venkey', phone: '8985969003', town: 'Badvel', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
+      { reg_no: 'TKPL-2026-0285', name: 'Shaik Farhan', phone: '8019835280', town: 'Rayachoty', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' }
+    ];
+
+    const PORTAL_LINK = 'https://tkpl.vercel.app/find-ticket';
+    const STORAGE_KEY = 'tkpl_pending_notifications_sent_v1';
+
+    let currentTemplate = 'smart';
+    let currentFilter = 'all';
+    let selectedSet = new Set(PLAYERS.map(p => p.reg_no));
+    let sentMap = {};
+
+    try {
+      sentMap = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    } catch(e) {}
+
+    // Initialize custom template text
+    document.getElementById('customTemplateInput').value =
+      `Hi {name},\nYour TKPL 2026 registration ({reg_no}) is pending ₹399 payment.\nPlease complete here to secure your auction slot: {link}\n— TKPL Committee`;
+
+    function buildMessage(player) {
+      const link = PORTAL_LINK;
+      if (currentTemplate === 'smart') {
+        if (player.reasonKind === 'upi_failed') {
+          return `🏏 *TKPL 2026 Player Registration Notice*\n\nHi *${player.name}*,\n\nWe noticed your recent UPI payment attempt for TKPL Cricket Registration (*${player.reg_no}*) did not go through.\n\nGood news: Your registration slot as *${player.role}* (${player.town}) is still reserved! 🏏\n\nPlease complete your ₹399 registration fee here to confirm your player auction eligibility:\n👉 ${link}\n\nNeed any assistance? Reply directly to this WhatsApp message.\n— *TKPL Organizing Committee*`;
+        }
+        return `🏏 *TKPL 2026 Player Registration Notice*\n\nHi *${player.name}*,\n\nWe received your player registration for TKPL 2026 (*${player.reg_no}*).\n\nYour registration fee of *₹399* is currently pending. To secure your slot as *${player.role}* and ensure your profile appears in the official Auction Pool, please complete your online payment here:\n👉 ${link}\n\nLooking forward to seeing you on the field!\n— *TKPL Organizing Committee*`;
+      } else if (currentTemplate === 'friendly') {
+        return `🏏 *TKPL 2026 - Registration Follow-up*\n\nDear *${player.name}*,\n\nGreetings from the TKPL Committee! Your registration profile (*${player.reg_no}*) for *${player.role}* is waiting for final fee payment (₹399).\n\nPlease complete your payment at the link below to confirm your player auction eligibility:\n👉 *Pay here:* ${link}\n\nBest regards,\n*Team TKPL*`;
+      } else if (currentTemplate === 'urgent') {
+        return `⚠️ *URGENT: TKPL 2026 Auction Final Call*\n\nDear *${player.name}* (*${player.reg_no}*),\n\nThe player registration window is closing soon and auction lists are being finalized! Your registration fee of *₹399* is still pending.\n\nPlease clear your fee now to prevent cancellation of your registration:\n👉 ${link}\n\n— *TKPL Organizing Committee*`;
+      } else if (currentTemplate === 'telugu') {
+        return `🏏 *TKPL 2026 క్రికెట్ టోర్నమెంట్ రిజిస్ట్రేషన్ ప్రకటన*\n\nనమస్కారం *${player.name}* గారు,\n\nTKPL 2026 లో మీ రిజిస్ట్రేషన్ నంబర్: *${player.reg_no}* (${player.role}, ${player.town}).\nమీ ₹399 రిజిస్ట్రేషన్ ఫీజు పెండింగ్‌లో ఉంది.\n\nఆక్షన్ లిస్ట్‌లో మీ పేరు ఖరారు కావడానికి వెంటనే ఈ క్రింది లింక్ ద్వారా ఫీజు చెల్లించండి:\n👉 ${link}\n\nఏమైనా సందేహాలు ఉంటే ఇక్కడ రిప్లై ఇవ్వండి.\n— *TKPL కమిటీ*`;
+      } else {
+        const custom = document.getElementById('customTemplateInput').value;
+        return custom
+          .replace(/{name}/g, player.name)
+          .replace(/{reg_no}/g, player.reg_no)
+          .replace(/{phone}/g, player.phone)
+          .replace(/{town}/g, player.town)
+          .replace(/{role}/g, player.role)
+          .replace(/{link}/g, link);
+      }
+    }
+
+    function setTemplate(tpl) {
+      currentTemplate = tpl;
+      document.querySelectorAll('.template-pill').forEach(btn => {
+        btn.classList.remove('border-emerald-500', 'bg-emerald-500/10', 'text-emerald-300');
+        btn.classList.add('border-zinc-800', 'bg-zinc-800/40', 'text-zinc-300');
+      });
+      const activeBtn = document.getElementById('pill-' + tpl);
+      if (activeBtn) {
+        activeBtn.classList.remove('border-zinc-800', 'bg-zinc-800/40', 'text-zinc-300');
+        activeBtn.classList.add('border-emerald-500', 'bg-emerald-500/10', 'text-emerald-300');
+      }
+      document.getElementById('customTemplateWrapper').classList.toggle('hidden', tpl !== 'custom');
+      renderPreview();
+    }
+
+    function renderPreview() {
+      const sample = PLAYERS[0];
+      document.getElementById('messagePreview').textContent = buildMessage(sample);
+    }
+
+    function setFilter(flt) {
+      currentFilter = flt;
+      document.querySelectorAll('.filter-btn').forEach(b => {
+        b.classList.remove('bg-zinc-800', 'text-white', 'border', 'border-zinc-600');
+        b.classList.add('text-zinc-400');
+      });
+      const active = document.getElementById('btnFilter-' + flt);
+      if (active) {
+        active.classList.add('bg-zinc-800', 'text-white', 'border', 'border-zinc-600');
+        active.classList.remove('text-zinc-400');
+      }
+      renderTable();
+    }
+
+    function toggleSelect(reg) {
+      if (selectedSet.has(reg)) selectedSet.delete(reg);
+      else selectedSet.add(reg);
+      updateCounts();
+      renderTable();
+    }
+
+    function toggleSelectAll() {
+      const filtered = getFilteredPlayers();
+      const allSelected = filtered.every(p => selectedSet.has(p.reg_no));
+      if (allSelected) {
+        filtered.forEach(p => selectedSet.delete(p.reg_no));
+      } else {
+        filtered.forEach(p => selectedSet.add(p.reg_no));
+      }
+      updateCounts();
+      renderTable();
+    }
+
+    function toggleSent(reg) {
+      sentMap[reg] = !sentMap[reg];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sentMap));
+      updateCounts();
+      renderTable();
+    }
+
+    function resetSentStatus() {
+      if (confirm('Reset contact status for all players?')) {
+        sentMap = {};
+        localStorage.removeItem(STORAGE_KEY);
+        updateCounts();
+        renderTable();
+      }
+    }
+
+    function openWhatsApp(player) {
+      const text = buildMessage(player);
+      const url = `https://wa.me/91${player.phone}?text=${encodeURIComponent(text)}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+      sentMap[player.reg_no] = true;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sentMap));
+      updateCounts();
+      renderTable();
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toastMessage');
+      t.textContent = '✓ ' + msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3000);
+    }
+
+    function copyPhoneNumbers(delim) {
+      const selected = PLAYERS.filter(p => selectedSet.has(p.reg_no));
+      if (!selected.length) return alert('Please select at least one player.');
+      const txt = selected.map(p => p.phone).join(delim === ',' ? ', ' : '\n');
+      navigator.clipboard.writeText(txt);
+      showToast(`Copied ${selected.length} phone numbers to clipboard!`);
+    }
+
+    function copyAllMessages() {
+      const selected = PLAYERS.filter(p => selectedSet.has(p.reg_no));
+      if (!selected.length) return alert('Please select at least one player.');
+      const txt = selected.map((p, i) => `=== [${i+1}/${selected.length}] ${p.name} (${p.phone}) ===\n${buildMessage(p)}\n`).join('\n');
+      navigator.clipboard.writeText(txt);
+      showToast(`Copied all ${selected.length} messages to clipboard!`);
+    }
+
+    function openAllTabsStaggered() {
+      const selected = PLAYERS.filter(p => selectedSet.has(p.reg_no));
+      if (!selected.length) return alert('Please select at least one player.');
+      if (!confirm(`Open WhatsApp tabs for ${selected.length} players?\n(Tabs will open spaced 2 seconds apart to prevent browser pop-up blocking)`)) return;
+      selected.forEach((p, idx) => {
+        setTimeout(() => openWhatsApp(p), idx * 2000);
+      });
+    }
+
+    function getFilteredPlayers() {
+      const q = document.getElementById('searchInput').value.trim().toLowerCase();
+      return PLAYERS.filter(p => {
+        if (currentFilter === 'upi_failed' && p.reasonKind !== 'upi_failed') return false;
+        if (currentFilter === 'abandoned' && p.reasonKind !== 'abandoned') return false;
+        if (currentFilter === 'unsent' && sentMap[p.reg_no]) return false;
+        if (currentFilter === 'sent' && !sentMap[p.reg_no]) return false;
+        if (!q) return true;
+        return p.name.toLowerCase().includes(q) || p.phone.includes(q) || p.reg_no.toLowerCase().includes(q) || p.town.toLowerCase().includes(q);
+      });
+    }
+
+    function updateCounts() {
+      const count = Object.values(sentMap).filter(Boolean).length;
+      document.getElementById('sentCountText').textContent = count;
+      document.getElementById('kpiNotifiedProgress').textContent = `${count} of 14 contacted`;
+      document.getElementById('headerSelectedBadge').textContent = selectedSet.size;
+      document.getElementById('btnSelectedCount').textContent = selectedSet.size;
+    }
+
+    function renderTable() {
+      const filtered = getFilteredPlayers();
+      const tbody = document.getElementById('playerTableBody');
+      const allSelected = filtered.length > 0 && filtered.every(p => selectedSet.has(p.reg_no));
+      document.getElementById('selectAllCheckbox').checked = allSelected;
+
+      tbody.innerHTML = filtered.map(p => {
+        const isSent = !!sentMap[p.reg_no];
+        const isChecked = selectedSet.has(p.reg_no);
+        const reasonBadge = p.reasonKind === 'upi_failed'
+          ? `<span class="inline-flex items-center gap-1 rounded border border-red-500/30 bg-red-950/30 px-2 py-0.5 text-[11px] font-semibold text-red-300">⚠️ UPI Failed</span>`
+          : `<span class="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-950/30 px-2 py-0.5 text-[11px] font-semibold text-amber-300">Abandoned</span>`;
+
+        const statusBadge = isSent
+          ? `<button onclick="toggleSent('${p.reg_no}')" class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 cursor-pointer">✓ Contacted</button>`
+          : `<button onclick="toggleSent('${p.reg_no}')" class="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold bg-zinc-800 text-zinc-400 border border-zinc-700 cursor-pointer">Pending</button>`;
+
+        return `
+          <tr class="hover:bg-zinc-800/40 transition ${isChecked ? 'bg-zinc-800/20' : ''}">
+            <td class="py-3 px-4">
+              <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleSelect('${p.reg_no}')" class="h-4 w-4 rounded bg-zinc-900 border-zinc-700 text-emerald-500 cursor-pointer">
+            </td>
+            <td class="py-3 px-3 font-mono font-bold text-zinc-200">${p.reg_no}</td>
+            <td class="py-3 px-3 font-bold text-white">${p.name}</td>
+            <td class="py-3 px-3">
+              <div class="flex items-center gap-2">
+                <span class="font-mono text-zinc-300 font-semibold">${p.phone}</span>
+                <a href="tel:+91${p.phone}" class="text-zinc-500 hover:text-white" title="Call">📞</a>
+              </div>
+            </td>
+            <td class="py-3 px-3">
+              <div class="text-zinc-300">${p.town}</div>
+              <div class="text-[10px] text-zinc-500">${p.role}</div>
+            </td>
+            <td class="py-3 px-3">
+              <div>${reasonBadge}</div>
+              <div class="text-[10px] text-zinc-400 mt-0.5">${p.reasonText}</div>
+            </td>
+            <td class="py-3 px-3 text-center">${statusBadge}</td>
+            <td class="py-3 px-4 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick='openWhatsApp(${JSON.stringify(p)})' class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition active:scale-95 cursor-pointer">
+                  <span>💬 WhatsApp</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Broadcast Runner Modal Logic
+    let runnerList = [];
+    let runnerIndex = 0;
+
+    function startBroadcastRunner() {
+      runnerList = PLAYERS.filter(p => selectedSet.has(p.reg_no));
+      if (!runnerList.length) return alert('Please select at least one player.');
+      runnerIndex = 0;
+      document.getElementById('runnerModal').classList.remove('hidden');
+      renderRunnerStep();
+    }
+
+    function closeBroadcastRunner() {
+      document.getElementById('runnerModal').classList.add('hidden');
+    }
+
+    function renderRunnerStep() {
+      const p = runnerList[runnerIndex];
+      document.getElementById('runnerQueueTitle').textContent = `Player ${runnerIndex + 1} of ${runnerList.length}`;
+      document.getElementById('runnerProgressBar').style.width = `${((runnerIndex + 1) / runnerList.length) * 100}%`;
+
+      document.getElementById('runnerPlayerCard').innerHTML = `
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-base font-extrabold text-white">${p.name}</div>
+            <div class="text-xs text-zinc-400 font-mono">${p.reg_no} · ${p.phone}</div>
+          </div>
+          <span class="rounded border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300">${p.town} (${p.role})</span>
+        </div>
+        <div class="text-xs text-zinc-400 pt-1">
+          <strong class="text-zinc-300">Failure Reason:</strong> ${p.reasonText}
+        </div>
+      `;
+
+      document.getElementById('runnerMessageText').textContent = buildMessage(p);
+    }
+
+    function sendCurrentRunnerPlayer() {
+      const p = runnerList[runnerIndex];
+      openWhatsApp(p);
+      if (runnerIndex < runnerList.length - 1) {
+        runnerIndex++;
+        renderRunnerStep();
+      } else {
+        closeBroadcastRunner();
+        alert('🎉 Broadcast complete! All selected players have been sent via WhatsApp.');
+      }
+    }
+
+    function skipRunnerPlayer() {
+      if (runnerIndex < runnerList.length - 1) {
+        runnerIndex++;
+        renderRunnerStep();
+      } else {
+        closeBroadcastRunner();
+      }
+    }
+
+    // Init on page load
+    renderPreview();
+    updateCounts();
+    renderTable();
+  </script>
+</body>
+</html>
