@@ -142,4 +142,17 @@ describe('POST /api/razorpay/get-receipt', () => {
       'https://fixture.supabase.co/storage/v1/object/public/player-photos/registrations/photo123.jpg'
     );
   });
+
+  it('normalizes 11-digit phone number with leading 0', async () => {
+    const { res, getStatus, getBody } = createMockRes();
+    const req = {
+      method: 'POST',
+      body: { registration_no: 'TKPL-2026-0101', phone: '09160714500', date_of_birth: '1993-05-19' },
+    } as ApiRequest;
+    await handler(req, res);
+    expect(getStatus()).toBe(200);
+    const receipt = getBody()?.receipt;
+    expect(receipt).toBeDefined();
+    expect(receipt.receipt_no).toBe('TKPL-RCPT-2026-0001');
+  });
 });

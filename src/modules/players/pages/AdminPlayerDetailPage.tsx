@@ -7,6 +7,8 @@ import {
   LockKey,
   CurrencyInr,
   ShieldCheck,
+  Ticket,
+  DownloadSimple,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import { canRolePerform, maskPhoneForReadOnly } from '../../core/lib/validation';
@@ -16,10 +18,12 @@ import {
   RegistrationBadge,
   RoleLabel,
 } from '../../core/components/StatusBadge';
+import { buildReceiptPayloadForPlayer, playerTicketFileName } from '../../core/lib/receipt';
+import { downloadReceiptPng } from '../../core/lib/receiptCanvas';
 
 export const AdminPlayerDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { players, payments, adminSession, updatePlayerReview } = useTournament();
+  const { players, payments, settings, adminSession, updatePlayerReview } = useTournament();
 
   const player = players.find((p) => p.id === id);
   const payment = payments.find((py) => py.player_id === id);
@@ -33,6 +37,10 @@ export const AdminPlayerDetailPage: React.FC = () => {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isDownloadingTicket, setIsDownloadingTicket] = useState(false);
+  const [ticketFeedback, setTicketFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
 
   if (!player) {
     return <Navigate to="/admin/players" replace />;
@@ -40,6 +48,43 @@ export const AdminPlayerDetailPage: React.FC = () => {
 
   const canReview = canRolePerform(adminSession?.role, 'review_player');
   const isPaymentVerified = payment?.status === 'verified';
+
+  const handleDownloadTicket = async () => {
+    if (!player || !payment || isDownloadingTicket) return;
+    setTicketFeedback(null);
+    setIsDownloadingTicket(true);
+    try {
+      const receiptPayload = buildReceiptPayloadForPlayer(player, payment);
+      if (!receiptPayload) {
+        setTicketFeedback({ type: 'error', message: 'Payment is not verified for this player.' });
+        return;
+      }
+      const ok = await downloadReceiptPng(receiptPayload, {
+        fileName: playerTicketFileName(player),
+        organizerLine: settings.organizer_line,
+        partnerLine: settings.partner_line,
+      });
+      if (ok) {
+        setTicketFeedback({
+          type: 'success',
+          message: `Official ticket downloaded for ${player.full_name} (${player.registration_no})!`,
+        });
+        setTimeout(() => setTicketFeedback(null), 4000);
+      } else {
+        setTicketFeedback({
+          type: 'error',
+          message: 'Could not generate ticket image. Please retry.',
+        });
+      }
+    } catch (err) {
+      setTicketFeedback({
+        type: 'error',
+        message: err instanceof Error ? err.message : 'Failed to download ticket.',
+      });
+    } finally {
+      setIsDownloadingTicket(false);
+    }
+  };
 
   const handleSaveReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,6 +228,43 @@ export const AdminPlayerDetailPage: React.FC = () => {
                 Open Payment Reconciliation Ledger →
               </Link>
             </div>
+
+            {isPaymentVerified && (
+              <div className="pt-3 border-t border-zinc-800 space-y-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadTicket}
+                  disabled={isDownloadingTicket}
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3 text-xs sm:text-sm font-bold text-zinc-950 shadow-md transition hover:bg-emerald-400 disabled:opacity-60 active:scale-[0.98]"
+                >
+                  <Ticket size={18} weight="bold" />
+                  <span>
+                    {isDownloadingTicket ? 'Generating Official Ticket…' : 'Download Official Ticket (PNG)'}
+                  </span>
+                </button>
+                <p className="text-[11px] text-zinc-400 text-center">
+                  Official 1080×1350 tournament entry pass with QR code &amp; player photo.
+                </p>
+              </div>
+            )}
+
+            {ticketFeedback && (
+              <div
+                role="status"
+                className={`flex items-start gap-2 rounded-xl p-3 text-xs font-medium border ${
+                  ticketFeedback.type === 'success'
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-rose-500/30 bg-rose-500/10 text-rose-300'
+                }`}
+              >
+                {ticketFeedback.type === 'success' ? (
+                  <CheckCircle size={16} weight="fill" className="shrink-0 text-emerald-400 mt-0.5" />
+                ) : (
+                  <WarningCircle size={16} weight="fill" className="shrink-0 text-rose-400 mt-0.5" />
+                )}
+                <span>{ticketFeedback.message}</span>
+              </div>
+            )}
           </div>
         </div>
 

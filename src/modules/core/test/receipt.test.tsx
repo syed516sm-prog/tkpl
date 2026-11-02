@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ReceiptCard } from '../../payments/components/ReceiptCard';
 import { formatInrFromPaise } from '../lib/validation';
-import type { ReceiptPayload } from '../types/tkpl';
+import { buildReceiptPayloadForPlayer, playerTicketFileName } from '../lib/receipt';
+import type { PaymentRecord, PlayerRecord, ReceiptPayload } from '../types/tkpl';
 
 const receipt: ReceiptPayload = {
   registration_no: 'TKPL-2026-0106',
@@ -60,5 +61,82 @@ describe('ReceiptCard', () => {
 
     expect(screen.queryByAltText(/player photograph/i)).not.toBeInTheDocument();
     expect(screen.getByText(/no photo/i)).toBeInTheDocument();
+  });
+
+  describe('buildReceiptPayloadForPlayer', () => {
+    const dummyPlayer: PlayerRecord = {
+      id: 'p-1',
+      registration_no: 'TKPL-2026-0373',
+      full_name: 'Rayyan Darban',
+      phone: '9676558382',
+      date_of_birth: '2003-08-10',
+      locality: 'Proddatur',
+      role: 'bowler',
+      batting_hand: 'right_hand',
+      bowling_style: 'right_arm_pace',
+      experience: '',
+      emergency_contact: '',
+      photo_url: 'https://example.com/photo.jpg',
+      photo_file_name: 'photo.jpg',
+      registration_status: 'approved',
+      auction_status: 'eligible',
+      review_notes: '',
+      rules_acknowledged: true,
+      marketing_consent: true,
+      consent_at: '2026-11-02T18:00:00.000Z',
+      created_at: '2026-11-02T18:00:00.000Z',
+      updated_at: '2026-11-02T18:00:00.000Z',
+    };
+
+    const dummyVerifiedPayment: PaymentRecord = {
+      id: 'pay-1',
+      player_id: 'p-1',
+      registration_no: 'TKPL-2026-0373',
+      player_name: 'Rayyan Darban',
+      player_phone: '9676558382',
+      amount_paise: 39900,
+      currency: 'INR',
+      method: 'razorpay',
+      transaction_ref: 'pay_TvPX4a4N1lU0US',
+      receipt_file_name: '',
+      status: 'verified',
+      verified_by: 'admin-1',
+      verifier_name: 'Syed',
+      verified_at: '2026-11-02T18:47:00.000Z',
+      refund_ref: '',
+      notes: '',
+      razorpay_order_id: 'order_123',
+      razorpay_payment_id: 'pay_TvPX4a4N1lU0US',
+      receipt_no: 'TKPL-REC-0373',
+      paid_at: '2026-11-02T18:47:00.000Z',
+      receipt_issued_at: '2026-11-02T18:47:00.000Z',
+      razorpay_handler: 'upi',
+      razorpay_mode: 'live',
+      created_at: '2026-11-02T18:00:00.000Z',
+      updated_at: '2026-11-02T18:47:00.000Z',
+    };
+
+    it('builds a complete ReceiptPayload when payment is verified', () => {
+      const payload = buildReceiptPayloadForPlayer(dummyPlayer, dummyVerifiedPayment);
+      expect(payload).not.toBeNull();
+      expect(payload?.registration_no).toBe('TKPL-2026-0373');
+      expect(payload?.full_name).toBe('Rayyan Darban');
+      expect(payload?.receipt_no).toBe('TKPL-REC-0373');
+      expect(payload?.status).toBe('verified');
+      expect(payload?.amount_paise).toBe(39900);
+    });
+
+    it('returns null when payment is not verified', () => {
+      const payload = buildReceiptPayloadForPlayer(dummyPlayer, {
+        ...dummyVerifiedPayment,
+        status: 'pending',
+      });
+      expect(payload).toBeNull();
+    });
+
+    it('generates clean filename for ticket downloads', () => {
+      const fileName = playerTicketFileName(dummyPlayer);
+      expect(fileName).toBe('TKPL-2026-0373_Rayyan_Darban.png');
+    });
   });
 });

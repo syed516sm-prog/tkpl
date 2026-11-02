@@ -415,17 +415,25 @@ export async function drawReceiptCanvas(
   return canvas;
 }
 
+/** Generate the receipt as an image PNG Blob without triggering a download. */
+export async function getReceiptPngBlob(
+  receipt: ReceiptPayload,
+  options: ReceiptCanvasOptions = {}
+): Promise<Blob | null> {
+  const canvas = await drawReceiptCanvas(receipt, options);
+  if (!canvas || typeof canvas.toBlob !== 'function') return null;
+
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((value) => resolve(value), 'image/png');
+  });
+}
+
 /** Render + download the receipt as a PNG. Resolves false when rendering fails. */
 export async function downloadReceiptPng(
   receipt: ReceiptPayload,
   options: ReceiptCanvasOptions & { fileName: string }
 ): Promise<boolean> {
-  const canvas = await drawReceiptCanvas(receipt, options);
-  if (!canvas || typeof canvas.toBlob !== 'function') return false;
-
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob((value) => resolve(value), 'image/png');
-  });
+  const blob = await getReceiptPngBlob(receipt, options);
   if (!blob) return false;
 
   const url = URL.createObjectURL(blob);

@@ -62,7 +62,12 @@ export function createCreateOrderHandler(deps: CreateOrderDeps = {}) {
     const registrationNo = typeof body?.registration_no === 'string' ? body.registration_no.trim() : '';
     const phone = typeof body?.phone === 'string' ? body.phone.replace(/\D/g, '') : '';
     const dateOfBirth = typeof body?.date_of_birth === 'string' ? body.date_of_birth.trim() : '';
-    const cleanPhone = phone.length === 12 && phone.startsWith('91') ? phone.slice(2) : phone;
+    let cleanPhone = phone;
+    if (cleanPhone.length === 12 && cleanPhone.startsWith('91')) {
+      cleanPhone = cleanPhone.slice(2);
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.slice(1);
+    }
 
     if (!registrationNo || !cleanPhone || !dateOfBirth) {
       return fail(

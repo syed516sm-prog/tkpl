@@ -1,4 +1,4 @@
-import type { PlayingRole, ReceiptPayload } from '../types/tkpl';
+import type { PaymentRecord, PlayerRecord, PlayingRole, ReceiptPayload } from '../types/tkpl';
 import { formatInrFromPaise } from './validation';
 
 export const RECEIPT_CANVAS_WIDTH = 1080;
@@ -76,4 +76,39 @@ export function isReceiptComplete(
 export function receiptFileName(receipt: Pick<ReceiptPayload, 'registration_no'>): string {
   const safe = receipt.registration_no.replace(/[^A-Za-z0-9-]/g, '') || 'TKPL';
   return `${safe}-Receipt.png`;
+}
+
+/** Constructs an official ReceiptPayload from existing player & payment records. */
+export function buildReceiptPayloadForPlayer(
+  player: PlayerRecord,
+  payment?: PaymentRecord | null
+): ReceiptPayload | null {
+  if (!payment || payment.status !== 'verified') return null;
+  const receiptNo = payment.receipt_no || `TKPL-REC-${player.registration_no.replace(/\D/g, '') || '0000'}`;
+  return {
+    registration_no: player.registration_no,
+    full_name: player.full_name,
+    locality: player.locality,
+    role: player.role,
+    photo_url: player.photo_url || null,
+    amount_paise: payment.amount_paise || 39900,
+    currency: payment.currency || 'INR',
+    receipt_no: receiptNo,
+    paid_at: payment.paid_at || payment.verified_at || player.created_at,
+    submitted_at: player.created_at,
+    razorpay_payment_id: payment.razorpay_payment_id || payment.transaction_ref || 'verified_online',
+    razorpay_handler: payment.razorpay_handler || 'razorpay_checkout',
+    razorpay_mode: payment.razorpay_mode || 'live',
+    status: payment.status,
+  };
+}
+
+/** Formats a clean file name for the downloaded ticket, e.g. TKPL-2026-0373_Rayyan_Darban.png */
+export function playerTicketFileName(player: Pick<PlayerRecord, 'registration_no' | 'full_name'>): string {
+  const safeReg = player.registration_no.replace(/[^A-Za-z0-9-]/g, '') || 'TKPL';
+  const safeName = player.full_name
+    .trim()
+    .replace(/[^A-Za-z0-9]+/g, '_')
+    .slice(0, 30) || 'Player';
+  return `${safeReg}_${safeName}.png`;
 }

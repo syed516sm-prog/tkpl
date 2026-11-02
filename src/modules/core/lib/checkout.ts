@@ -9,6 +9,7 @@ import {
 import { startCheckout } from './razorpay';
 import { getReceipt } from './tournamentData';
 import { getSupabase } from './supabase';
+import { normalizeIndianPhone } from './validation';
 
 /** Total capture-confirmation wait: 4 checks, ~3s apart (~9s). */
 const CAPTURE_WAIT_ATTEMPTS = 4;
@@ -44,7 +45,7 @@ export async function runRegistrationPayment(params: CheckoutParams): Promise<Ch
   // Step 1 (docs: "Create an Order in Server"). The amount is read server-side.
   const order: CreateOrderResponse = await createRazorpayOrder({
     registration_no: params.registration_no,
-    phone: params.phone,
+    phone: normalizeIndianPhone(params.phone),
     date_of_birth: params.date_of_birth,
   });
 

@@ -52,6 +52,8 @@ export function createGetReceiptHandler(deps: GetReceiptDeps = {}) {
 
     if (phone.length === 12 && phone.startsWith('91')) {
       phone = phone.slice(2);
+    } else if (phone.length === 11 && phone.startsWith('0')) {
+      phone = phone.slice(1);
     }
 
     if (!registrationNo || !phone || !dateOfBirth) {

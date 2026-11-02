@@ -76,6 +76,10 @@ Without `vercel dev`, the website still works (registration + status + admin), b
   - **Standalone Desktop Access:** Double-click `C:\Users\liter\Desktop\TKPL_Pending_FollowUp_Dashboard.html` to run offline without starting the server!
 - **Check the payment ledger (`/admin/payments`):** Every online payment is **already Verified** — Razorpay's signature was checked before the receipt number was issued. The table shows the **Receipt No** and the **Razorpay Payment ID** so you can match them against your Razorpay dashboard.
 - **Export (`/admin/players`):** **Export Registered Players CSV** gives receipt no, registration no, player name, contact info, locality, and playing role. The export is written to the audit log.
+- **Download Tickets for Players (`/admin/players`):**
+  - **Quick Download from Roster:** In the **Players & Roster** table, any player with a verified fee has a green **Ticket** button right next to *Inspect*. One click downloads their 1080×1350 ticket image with photo & QR code.
+  - **Download from Inspect Screen (`/admin/players/:id`):** When viewing a player's details, the *Linked Fee Record* box has a dedicated **Download Official Ticket (PNG)** button.
+  - **Bulk Download All Approved Tickets (ZIP):** Click the top green button **"Download All Approved Tickets (ZIP)"**. An interactive progress popup generates high-res tickets for all approved players with photos and bundles them into a single clean ZIP archive (`TKPL_Approved_Player_Tickets_<date>.zip`).
 - **Review a player (`/admin/players`):** Open **Inspect**, check the photo and cricket details, and set **Approved** or request corrections.
 - **Settings (`/admin/settings`):** Set the fee, deadline, or close registrations. The page also shows read-only **Payment gateway: Razorpay** status (connected / not configured) — no key or secret is ever displayed.
 

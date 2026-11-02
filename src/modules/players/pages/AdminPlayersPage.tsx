@@ -1,11 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import JSZip from 'jszip';
 import {
   MagnifyingGlass,
   FileCsv,
   ArrowRight,
   Funnel,
   LockKey,
+  Ticket,
+  Archive,
+  SpinnerGap,
+  X,
 } from '@phosphor-icons/react';
 import { useTournament } from '../../core/context/TournamentContext';
 import {
@@ -18,15 +23,28 @@ import {
   RegistrationBadge,
   RoleLabel,
 } from '../../core/components/StatusBadge';
+import { buildReceiptPayloadForPlayer, playerTicketFileName } from '../../core/lib/receipt';
+import { downloadReceiptPng, getReceiptPngBlob } from '../../core/lib/receiptCanvas';
+import type { PlayerRecord } from '../../core/types/tkpl';
 
 export const AdminPlayersPage: React.FC = () => {
-  const { players, payments, adminSession, recordCsvExportAudit } = useTournament();
+  const { players, payments, settings, adminSession, recordCsvExportAudit } = useTournament();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [regStatusFilter, setRegStatusFilter] = useState<string>('all');
   const [payStatusFilter, setPayStatusFilter] = useState<string>('all');
   const [exportFeedback, setExportFeedback] = useState<string>('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const [bulkState, setBulkState] = useState<{
+    isRunning: boolean;
+    current: number;
+    total: number;
+    playerName: string;
+    isZipping: boolean;
+  } | null>(null);
+  const cancelBulkRef = useRef<boolean>(false);
 
   const paymentByPlayerId = useMemo(() => {
     const map = new Map<string, (typeof payments)[number]>();
@@ -76,27 +94,213 @@ export const AdminPlayersPage: React.FC = () => {
     );
   };
 
+  const verifiedPlayers = useMemo(() => {
+    return players.filter((pl) => {
+      const pay = paymentByPlayerId.get(pl.id);
+      return pay?.status === 'verified';
+    });
+  }, [players, paymentByPlayerId]);
+
+  const handleDownloadSingleTicket = async (player: PlayerRecord) => {
+    const pay = paymentByPlayerId.get(player.id);
+    if (!pay || pay.status !== 'verified' || downloadingId) return;
+
+    setDownloadingId(player.id);
+    setExportFeedback('');
+    try {
+      const payload = buildReceiptPayloadForPlayer(player, pay);
+      if (!payload) return;
+      const ok = await downloadReceiptPng(payload, {
+        fileName: playerTicketFileName(player),
+        organizerLine: settings.organizer_line,
+        partnerLine: settings.partner_line,
+      });
+      if (ok) {
+        setExportFeedback(`Downloaded official ticket for ${player.full_name} (${player.registration_no}).`);
+        setTimeout(() => setExportFeedback(''), 4000);
+      }
+    } catch (err) {
+      setExportFeedback(err instanceof Error ? err.message : 'Failed to download player ticket.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const handleBulkDownloadTickets = async () => {
+    if (verifiedPlayers.length === 0 || bulkState?.isRunning) return;
+
+    cancelBulkRef.current = false;
+    setBulkState({
+      isRunning: true,
+      current: 0,
+      total: verifiedPlayers.length,
+      playerName: '',
+      isZipping: false,
+    });
+    setExportFeedback('');
+
+    try {
+      const zip = new JSZip();
+      let count = 0;
+
+      for (let i = 0; i < verifiedPlayers.length; i++) {
+        if (cancelBulkRef.current) break;
+
+        const player = verifiedPlayers[i];
+        const pay = paymentByPlayerId.get(player.id);
+        const payload = buildReceiptPayloadForPlayer(player, pay);
+
+        setBulkState({
+          isRunning: true,
+          current: i + 1,
+          total: verifiedPlayers.length,
+          playerName: `${player.full_name} (${player.registration_no})`,
+          isZipping: false,
+        });
+
+        if (payload) {
+          try {
+            const blob = await getReceiptPngBlob(payload, {
+              organizerLine: settings.organizer_line,
+              partnerLine: settings.partner_line,
+            });
+            if (blob) {
+              const fileName = playerTicketFileName(player);
+              zip.file(fileName, blob);
+              count++;
+            }
+          } catch {
+            // continue with remaining tickets if one fails
+          }
+        }
+      }
+
+      if (cancelBulkRef.current || count === 0) {
+        setBulkState(null);
+        return;
+      }
+
+      setBulkState((prev) =>
+        prev
+          ? {
+              ...prev,
+              isZipping: true,
+              playerName: 'Compressing tickets into ZIP folder…',
+            }
+          : null
+      );
+
+      const zipBlob = await zip.generateAsync({
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 },
+      });
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(zipBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `TKPL_Approved_Player_Tickets_${dateStr}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setExportFeedback(
+        `Successfully downloaded all ${count} official tickets in a single ZIP file!`
+      );
+    } catch (err) {
+      setExportFeedback(
+        err instanceof Error ? err.message : 'Failed to create bulk tickets ZIP archive.'
+      );
+    } finally {
+      setBulkState(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Bulk Download Progress Modal */}
+      {bulkState?.isRunning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/95 p-6 sm:p-7 shadow-2xl text-zinc-100 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 text-emerald-400 font-bold">
+                <Archive size={22} weight="duotone" />
+                <span className="text-base">Bulk Ticket Generator</span>
+              </div>
+              <span className="text-xs font-mono font-bold bg-zinc-800 border border-zinc-700 px-2.5 py-1 rounded-lg text-emerald-300">
+                {bulkState.current} / {bulkState.total}
+              </span>
+            </div>
+
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-zinc-200">
+                {bulkState.isZipping ? 'Creating ZIP file…' : 'Generating Player Ticket…'}
+              </p>
+              <p className="text-xs text-zinc-400 truncate">
+                {bulkState.playerName || 'Initializing canvas renderer…'}
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="h-3 w-full overflow-hidden rounded-full bg-zinc-800 border border-zinc-700/80">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 via-lime-400 to-emerald-400 transition-all duration-300 rounded-full"
+                style={{
+                  width: `${Math.max(4, Math.round((bulkState.current / (bulkState.total || 1)) * 100))}%`,
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-2 text-xs">
+              <span className="text-zinc-400 font-medium">
+                {Math.round((bulkState.current / (bulkState.total || 1)) * 100)}% completed
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  cancelBulkRef.current = true;
+                  setBulkState(null);
+                }}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 font-semibold text-rose-300 hover:bg-zinc-700 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-50">
             Registered Players Roster
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Search, filter, and review player profiles. Export clean player lists anytime.
+            Search, filter, and review player profiles. Download tickets individually or in bulk ZIP.
           </p>
         </div>
 
-        {/* CSV Export Controls */}
+        {/* CSV & Bulk Ticket Export Controls */}
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={handleDownloadCsv}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 rounded-xl bg-zinc-800 border border-zinc-700 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-200 hover:bg-zinc-700 hover:text-white active:scale-[0.98] transition"
           >
             <FileCsv size={18} weight="bold" />
-            <span>Export Registered Players CSV</span>
+            <span>Export Roster CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBulkDownloadTickets}
+            disabled={verifiedPlayers.length === 0 || Boolean(bulkState?.isRunning)}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs sm:text-sm font-bold text-zinc-950 hover:bg-emerald-400 active:scale-[0.98] shadow-md transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Archive size={18} weight="bold" />
+            <span>Download All Approved Tickets ({verifiedPlayers.length} ZIP)</span>
           </button>
         </div>
       </div>
@@ -253,13 +457,27 @@ export const AdminPlayersPage: React.FC = () => {
                       </td>
 
                       <td className="py-4 pl-3 pr-5 text-right">
-                        <Link
-                          to={`/admin/players/${pl.id}`}
-                          className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-emerald-300"
-                        >
-                          <span>Inspect</span>
-                          <ArrowRight size={13} />
-                        </Link>
+                        <div className="inline-flex items-center justify-end gap-2">
+                          {pay?.status === 'verified' && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSingleTicket(pl)}
+                              disabled={downloadingId === pl.id}
+                              title="Download official ticket PNG"
+                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/50 hover:text-white disabled:opacity-50 transition"
+                            >
+                              <Ticket size={14} weight="bold" />
+                              <span>{downloadingId === pl.id ? 'Saving…' : 'Ticket'}</span>
+                            </button>
+                          )}
+                          <Link
+                            to={`/admin/players/${pl.id}`}
+                            className="inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-zinc-200 hover:border-emerald-500/50 hover:text-emerald-300"
+                          >
+                            <span>Inspect</span>
+                            <ArrowRight size={13} />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   );

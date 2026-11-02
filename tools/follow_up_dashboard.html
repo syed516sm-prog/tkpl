@@ -257,18 +257,20 @@
 
   <script>
     const PLAYERS = [
-      { reg_no: 'TKPL-2026-0122', name: 'B VINOD KUMAR REDDY', phone: '8500849901', town: 'Pulivendula', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0130', name: 'Vulasala Bharath', phone: '7995250457', town: 'GALIVEEDU', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'Insufficient bank account balance during UPI attempt' },
-      { reg_no: 'TKPL-2026-0164', name: 'Bhanu prakash', phone: '9100859612', town: 'Kadapa', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0212', name: 'Rachamallu Mallikarjuna Reddy', phone: '9652490435', town: 'Vempalli', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0223', name: 'Sonu akthar', phone: '6309928386', town: 'Kadapa', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
-      { reg_no: 'TKPL-2026-0233', name: 'Shaik Mohammad', phone: '7842625468', town: 'Kadapa district Vempalli', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0255', name: 'M.praveen Kumar reddy', phone: '8977575279', town: 'Kondur', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Registered profile, did not open payment gateway' },
-      { reg_no: 'TKPL-2026-0265', name: 'Sunny Sunny', phone: '7794932709', town: 'Kadapa', role: 'Batter', reasonKind: 'upi_failed', reasonText: 'UPI app notification timed out / expired' },
-      { reg_no: 'TKPL-2026-0266', name: 'Venkey', phone: '8985969003', town: 'Badvel', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0285', name: 'Shaik Farhan', phone: '8019835280', town: 'Rayachoty', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0289', name: 'Moula', phone: '9160590577', town: 'C.K.DINNE, KADAPA', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' },
-      { reg_no: 'TKPL-2026-0297', name: 'V SHARATH YADAV', phone: '9440176681', town: 'Kadapa', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without paying' }
+      { reg_no: 'TKPL-2026-0122', name: 'B VINOD KUMAR REDDY', phone: '8500849901', town: 'Pulivendula', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0130', name: 'Vulasala Bharath', phone: '7995250457', town: 'GALIVEEDU', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'Insufficient funds in bank account during UPI attempt' },
+      { reg_no: 'TKPL-2026-0164', name: 'Bhanu prakash', phone: '9100859612', town: 'Kadapa', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0212', name: 'Rachamallu Mallikarjuna Reddy', phone: '9652490435', town: 'Vempalli', role: 'Wicketkeeper', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0223', name: 'Sonu akthar', phone: '6309928386', town: 'Kadapa', role: 'Bowler', reasonKind: 'upi_failed', reasonText: 'Payment was unsuccessful as you could not complete it in time.' },
+      { reg_no: 'TKPL-2026-0233', name: 'Shaik Mohammad', phone: '7842625468', town: 'Kadapa district Vempalli', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0255', name: 'M.praveen Kumar reddy', phone: '8977575279', town: 'Kondur', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Profile registered, payment gateway not initiated' },
+      { reg_no: 'TKPL-2026-0285', name: 'Shaik Farhan', phone: '8019835280', town: 'Rayachoty', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0314', name: 'G Bhasakar', phone: '9701755659', town: 'royachoti', role: 'Batter', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0322', name: 'J Yaswanth', phone: '7569262841', town: 'Kadapa', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0346', name: 'T Surendra', phone: '8247699708', town: 'Prodduturu', role: 'All Rounder', reasonKind: 'upi_failed', reasonText: 'Payment was unsuccessful as you could not complete it in time.' },
+      { reg_no: 'TKPL-2026-0349', name: 'Bhavath reddy', phone: '9885867374', town: 'Rayachoti', role: 'Batter', reasonKind: 'abandoned', reasonText: 'Profile registered, payment gateway not initiated' },
+      { reg_no: 'TKPL-2026-0354', name: 'Ramesh Abhi', phone: '8978743200', town: 'Kadapa', role: 'Batter', reasonKind: 'abandoned', reasonText: 'Payment window opened, exited without completing payment' },
+      { reg_no: 'TKPL-2026-0371', name: 'Arshad', phone: '9494439940', town: 'Cuddapah', role: 'All Rounder', reasonKind: 'abandoned', reasonText: 'Profile registered, payment gateway not initiated' }
     ];
 
     const PORTAL_LINK = 'https://tkpl.vercel.app/find-ticket';
